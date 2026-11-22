@@ -13,14 +13,21 @@ import android.webkit.WebViewClient;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.webkit.WebViewAssetLoader;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * Dye Drop Android Native Host Activity.
  * Compatible with Android 4.4 KitKat (API 19) through latest Android versions (API 35+).
  */
 public class MainActivity extends AppCompatActivity {
+    private static final String LOCAL_HOST = "appassets.androidplatform.net";
     private WebView webView;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -40,46 +47,83 @@ public class MainActivity extends AppCompatActivity {
         settings.setLoadWithOverviewMode(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            final WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
-                .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
-                .addPathHandler("/", new WebViewAssetLoader.AssetsPathHandler(this))
-                .build();
+        webView.setWebViewClient(new WebViewClient() {
+            @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+            @Nullable
+            @Override
+            public WebResourceResponse shouldInterceptRequest(
+                @NonNull WebView view,
+                @NonNull WebResourceRequest request
+            ) {
+                WebResourceResponse local = serveLocalAsset(request.getUrl());
+                if (local != null) return local;
+                return super.shouldInterceptRequest(view, request);
+            }
 
-            webView.setWebViewClient(new WebViewClient() {
-                @Nullable
-                @Override
-                public WebResourceResponse shouldInterceptRequest(
-                    @NonNull WebView view,
-                    @NonNull WebResourceRequest request
-                ) {
-                    Uri uri = request.getUrl();
-                    if ("appassets.androidplatform.net".equals(uri.getHost())) {
-                        String path = uri.getPath();
-                        if (path == null || path.equals("/")) {
-                            return assetLoader.shouldInterceptRequest(
-                                Uri.parse("https://appassets.androidplatform.net/public/index.html")
-                            );
-                        }
-                        if (!path.startsWith("/public/")) {
-                            return assetLoader.shouldInterceptRequest(
-                                Uri.parse("https://appassets.androidplatform.net/public" + path)
-                            );
-                        }
-                    }
-                    return assetLoader.shouldInterceptRequest(uri);
+            @SuppressWarnings("deprecation")
+            @Nullable
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
+                if (url != null) {
+                    WebResourceResponse local = serveLocalAsset(Uri.parse(url));
+                    if (local != null) return local;
                 }
-            });
-            webView.loadUrl("https://appassets.androidplatform.net/public/index.html");
-        } else {
-            // Android 4.4 KitKat (API 19-20) fallback
-            settings.setAllowUniversalAccessFromFileURLs(true);
-            settings.setAllowFileAccessFromFileURLs(true);
-            webView.setWebViewClient(new WebViewClient());
-            webView.loadUrl("file:///android_asset/public/index.html");
+                return super.shouldInterceptRequest(view, url);
+            }
+        });
+
+        webView.loadUrl("https://" + LOCAL_HOST + "/index.html");
+        enableImmersiveFullscreen();
+    }
+
+    @Nullable
+    private WebResourceResponse serveLocalAsset(@Nullable Uri uri) {
+        if (uri == null || !LOCAL_HOST.equals(uri.getHost())) {
+            return null;
+        }
+        String path = uri.getPath();
+        if (path == null || path.isEmpty() || "/".equals(path)) {
+            path = "/index.html";
+        }
+        if (path.startsWith("/")) {
+            path = path.substring(1);
         }
 
-        enableImmersiveFullscreen();
+        try {
+            InputStream stream = getAssets().open("public/" + path);
+            String mimeType = guessMimeType(path);
+            String encoding = mimeType.startsWith("text/") || mimeType.contains("javascript") || mimeType.contains("json") || mimeType.contains("svg")
+                ? "UTF-8"
+                : null;
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Access-Control-Allow-Origin", "*");
+                return new WebResourceResponse(mimeType, encoding, 200, "OK", headers, stream);
+            }
+            return new WebResourceResponse(mimeType, encoding, stream);
+        } catch (IOException ignored) {
+            return null;
+        }
+    }
+
+    private String guessMimeType(String path) {
+        String lower = path.toLowerCase(Locale.US);
+        if (lower.endsWith(".html")) return "text/html";
+        if (lower.endsWith(".js") || lower.endsWith(".mjs")) return "application/javascript";
+        if (lower.endsWith(".css")) return "text/css";
+        if (lower.endsWith(".json") || lower.endsWith(".webmanifest")) return "application/json";
+        if (lower.endsWith(".svg")) return "image/svg+xml";
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".webp")) return "image/webp";
+        if (lower.endsWith(".mp3")) return "audio/mpeg";
+        if (lower.endsWith(".wav")) return "audio/wav";
+        if (lower.endsWith(".ogg")) return "audio/ogg";
+        if (lower.endsWith(".woff2")) return "font/woff2";
+        if (lower.endsWith(".woff")) return "font/woff";
+        if (lower.endsWith(".ico")) return "image/x-icon";
+        return "application/octet-stream";
     }
 
     private void enableImmersiveFullscreen() {

@@ -13,15 +13,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: '22'
 
       - name: Install web dependencies & build bundle
         run: |
-          npm ci
+          npm install --no-audit --no-fund
           npm run build
 
       - name: Sync built web assets into Android assets
@@ -36,15 +35,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK (KitKat API 19 through Android 15 API 35)
+      - name: Setup Android SDK (Compile SDK 35, Min SDK 19 KitKat)
         uses: android-actions/setup-android@v3
         with:
           packages: |
             platform-tools
             platforms;android-35
-            platforms;android-34
-            platforms;android-33
-            platforms;android-19
             build-tools;35.0.0
 
       - name: Setup Gradle
@@ -54,7 +50,7 @@ jobs:
 
       - name: Build Debug & Release APKs
         working-directory: android
-        run: gradle assembleDebug assembleRelease
+        run: gradle assembleDebug assembleRelease --no-daemon
 
       - name: Upload Dye Drop Debug APK
         uses: actions/upload-artifact@v4
