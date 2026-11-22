@@ -1,0 +1,6 @@
+{
+  "name": "Dye Drop",
+  "description": "A tactile liquid color-mixing puzzle game with real pigment physics, daily streaks, collectible vessels, and comic pop-art craft.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

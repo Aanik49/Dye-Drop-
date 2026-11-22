@@ -1,0 +1,201 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --ink: #141414;
+    --cream: #fff8dc;
+    --font-display: 'Fredoka', 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  html,
+  body,
+  #root {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+    font-family: var(--font-body);
+    color: var(--ink);
+    background-color: #1c1a22;
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Comic Pop-Art Halftone Dot Background */
+.comic-halftone {
+  background-image:
+    radial-gradient(circle at 12% 10%, var(--dot-color, rgba(255, 184, 77, 0.42)) 2.4px, transparent 2.6px),
+    radial-gradient(circle at 88% 88%, var(--dot-color, rgba(255, 184, 77, 0.36)) 2.4px, transparent 2.6px);
+  background-size: 16px 16px;
+}
+
+.comic-halftone-edge {
+  background-image: radial-gradient(var(--dot-color, rgba(244, 179, 66, 0.34)) 2.2px, transparent 2.4px);
+  background-size: 13px 13px;
+}
+
+/* Signature Comic Pop-Art Borders & Hard Offset Shadows */
+.comic-box {
+  border: 3px solid #141414;
+  box-shadow: 4px 4px 0px #141414;
+}
+
+.comic-box-sm {
+  border: 2.5px solid #141414;
+  box-shadow: 3px 3px 0px #141414;
+}
+
+.comic-box-lg {
+  border: 3.5px solid #141414;
+  box-shadow: 5px 5px 0px #141414;
+}
+
+.comic-btn {
+  border: 3px solid #141414;
+  box-shadow: 0px 4px 0px #141414;
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.12s ease;
+}
+
+.comic-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0px 1px 0px #141414;
+}
+
+.comic-btn:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.comic-text-stroke {
+  -webkit-text-stroke: 2px #141414;
+  paint-order: stroke fill;
+  text-shadow: 2px 2px 0px #141414;
+}
+
+.comic-text-stroke-lg {
+  -webkit-text-stroke: 3.5px #141414;
+  paint-order: stroke fill;
+  text-shadow: 3px 3px 0px #141414;
+}
+
+/* Custom Comic Tilt Slider */
+input[type='range'].comic-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type='range'].comic-slider::-webkit-slider-runnable-track {
+  height: 12px;
+  border-radius: 999px;
+  background: #fffdf5;
+  border: 2.5px solid #141414;
+}
+
+input[type='range'].comic-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #ffe047;
+  border: 3px solid #141414;
+  box-shadow: 0 3px 0 #141414;
+  margin-top: -10.5px;
+  transition: transform 0.1s ease;
+}
+
+input[type='range'].comic-slider:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+
+input[type='range'].comic-slider::-moz-range-track {
+  height: 12px;
+  border-radius: 999px;
+  background: #fffdf5;
+  border: 2.5px solid #141414;
+}
+
+input[type='range'].comic-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #ffe047;
+  border: 3px solid #141414;
+  box-shadow: 0 3px 0 #141414;
+}
+
+/* Smooth Compositor-Only Pop Animations */
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.86) translateY(14px);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.03) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-pop-in {
+  animation: popIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes floatSlow {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float-slow {
+  animation: floatSlow 2.6s ease-in-out infinite;
+}
+
+@keyframes sparkleSpin {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.14) rotate(8deg);
+  }
+}
+
+.animate-sparkle {
+  animation: sparkleSpin 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-slow,
+  .animate-sparkle,
+  .animate-pop-in {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Dye Drop — Liquid Color Mixing Puzzle</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --studio-bg: #F6F1E9;
+      --card-bg: #FFFDF9;
+      --ink: #262329;
+      --muted: #766F7D;
+      --border-soft: #E5DDD0;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #1D1B20;
+      background-image:
+        radial-gradient(circle at 18% 15%, rgba(255, 198, 165, 0.14) 0%, transparent 45%),
+        radial-gradient(circle at 82% 85%, rgba(165, 216, 255, 0.14) 0%, transparent 45%);
+      margin: 0;
+      padding: 0;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      color: var(--ink);
+    }
+
+    .font-serif-display {
+      font-family: 'Fraunces', serif;
+    }
+
+    /* Mobile Portrait Studio Frame */
+    .phone-frame {
+      width: 100%;
+      max-width: 430px;
+      height: 100dvh;
+      max-height: 880px;
+      background: linear-gradient(180deg, #FAF6F0 0%, #F1EAE0 100%);
+      border: 6px solid #2C2830;
+      border-radius: 40px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65), inset 0 0 0 3px #FFFDF9;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    @media (max-width: 445px) {
+      .phone-frame {
+        max-width: 100%;
+        height: 100dvh;
+        max-height: none;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+
+    /* Tactile Dropper Pipettes */
+    .pipette-btn {
+      transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.14s ease, opacity 0.2s ease;
+      cursor: pointer;
+    }
+
+    .pipette-btn:active:not(:disabled) {
+      transform: translateY(3px) scale(0.95);
+    }
+
+    .pipette-btn:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+    }
+
+    /* Custom Range Slider for Glass Tilt */
+    input[type="range"].tilt-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    input[type="range"].tilt-slider::-webkit-slider-runnable-track {
+      height: 10px;
+      border-radius: 999px;
+      background: #E4DDD2;
+      border: 1.5px solid #CFC5B6;
+    }
+
+    input[type="range"].tilt-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #FFFDF9;
+      border: 3px solid #262329;
+      box-shadow: 0 3px 8px rgba(38, 35, 41, 0.25);
+      margin-top: -9.5px;
+      transition: transform 0.1s ease;
+    }
+
+    input[type="range"].tilt-slider:active::-webkit-slider-thumb {
+      transform: scale(1.12);
+    }
+
+    /* Subtle Modal & Drawer Animations */
+    @keyframes modalFadeScale {
+      0% { opacity: 0; transform: scale(0.9) translateY(16px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .animate-modal {
+      animation: modalFadeScale 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes slideUpDrawer {
+      0% { transform: translateY(100%); }
+      100% { transform: translateY(0); }
+    }
+    .animate-drawer {
+      animation: slideUpDrawer 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Canvas Cursor & Touch */
+    #liquid-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+      cursor: grab;
+    }
+    #liquid-canvas:active {
+      cursor: grabbing;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Mobile Portrait Studio Frame -->
+  <main class="phone-frame" id="app-container">
+
+    <!-- 1. TOP HEADER: LEVEL NAVIGATION & STUDIO COLLECTION -->
+    <header class="px-3.5 pt-3 pb-2 flex items-center justify-between gap-2 shrink-0 z-20">
+      <!-- Level Switcher -->
+      <div class="flex items-center gap-1.5 bg-[#FFFDF9] border border-[#E2D9CB] rounded-full px-2 py-1 shadow-xs">
+        <button id="btn-prev-lvl" title="Previous Level" class="w-6 h-6 rounded-full hover:bg-[#F2ECE1] flex items-center justify-center text-xs font-bold disabled:opacity-30">◀</button>
+        <div class="px-1.5 text-center">
+          <span id="hud-level-num" class="text-[10px] font-extrabold uppercase tracking-wider text-[#8B8194] block leading-none">Level 1</span>
+          <span id="hud-level-name" class="font-serif-display font-bold text-xs sm:text-sm text-[#262329] leading-tight">Sunset Tangerine</span>
+        </div>
+        <button id="btn-next-lvl" title="Next Level" class="w-6 h-6 rounded-full hover:bg-[#F2ECE1] flex items-center justify-center text-xs font-bold disabled:opacity-30">▶</button>
+      </div>
+
+      <!-- Right Studio Buttons: Collection & Sound -->
+      <div class="flex items-center gap-1.5">
+        <button id="btn-open-collection" class="bg-[#FFFDF9] hover:bg-[#F7F2E8] border border-[#E2D9CB] rounded-full px-2.5 py-1.5 shadow-xs flex items-center gap-1 text-xs font-bold text-[#262329] transition active:scale-95">
+          <span>🏺</span>
+          <span>Studio</span>
+        </button>
+        <button id="btn-mute" title="Toggle Sound" class="bg-[#FFFDF9] hover:bg-[#F7F2E8] border border-[#E2D9CB] rounded-full w-8 h-8 shadow-xs flex items-center justify-center text-sm transition active:scale-95">
+          🔊
+        </button>
+      </div>
+    </header>
+
+    <!-- 2. TARGET vs. MIXED SWATCH & MATCH METER CARD -->
+    <section class="px-3.5 pb-1.5 shrink-0 z-20">
+      <div class="bg-[#FFFDF9]/95 backdrop-blur-xs border border-[#E2D9CB] rounded-2xl p-2.5 shadow-[0_6px_20px_rgba(38,35,41,0.05)] flex items-center justify-between gap-2">
+        <!-- Target Swatch -->
+        <div class="flex items-center gap-2">
+          <div id="swatch-target" class="w-11 h-11 rounded-xl border-2 border-[#262329]/20 shadow-inner transition-colors duration-300 shrink-0" style="background-color: #FF7A2F;"></div>
+          <div class="flex flex-col">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-[#8B8194]">Target</span>
+            <span id="target-color-label" class="font-bold text-xs text-[#262329] leading-tight">Tangerine</span>
+            <span id="target-hint-recipe" class="text-[10px] font-semibold text-[#9C92A6]">2 drops max</span>
+          </div>
+        </div>
+
+        <!-- Center Match Percentage & Swirl Progress Ring -->
+        <div class="flex flex-col items-center justify-center px-2">
+          <div id="match-pill" class="px-2.5 py-1 rounded-full bg-[#F3EFE8] border border-[#E2D9CB] flex items-center gap-1 transition-all duration-300">
+            <span id="match-percent-text" class="font-extrabold text-xs sm:text-sm text-[#262329]">0%</span>
+            <span class="text-[10px] font-bold text-[#766F7D]">Match</span>
+          </div>
+          <span id="swirl-status-label" class="text-[10px] font-bold text-[#8B8194] mt-0.5">Drop dye to begin</span>
+        </div>
+
+        <!-- Live Mixed Swatch -->
+        <div class="flex items-center gap-2 text-right">
+          <div class="flex flex-col items-end">
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-[#8B8194]">Your Mix</span>
+            <span id="live-hex-label" class="font-mono font-bold text-xs text-[#262329] leading-tight">CLEAR</span>
+            <span id="swirl-clarity-text" class="text-[10px] font-semibold text-[#9C92A6]">Pure water</span>
+          </div>
+          <div id="swatch-live" class="w-11 h-11 rounded-xl border-2 border-[#262329]/20 shadow-inner transition-colors duration-150 shrink-0" style="background-color: #EBF5FA;"></div>
+        </div>
+      </div>
+
+      <!-- Drop Allowance Pips & Undo/Reset Bar -->
+      <div class="flex items-center justify-between px-1 pt-2">
+        <div class="flex items-center gap-1.5">
+          <span class="text-[11px] font-bold text-[#766F7D]">Drops:</span>
+          <div id="drop-pips-container" class="flex items-center gap-1">
+            <!-- Dynamic drop pips injected via JS -->
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <button id="btn-undo" disabled class="px-2.5 py-1 rounded-full bg-[#FFFDF9] border border-[#DFD6C7] text-[11px] font-bold text-[#262329] shadow-2xs disabled:opacity-40 active:scale-95 transition">
+            ↩ Undo
+          </button>
+          <button id="btn-reset" class="px-2.5 py-1 rounded-full bg-[#FFFDF9] border border-[#DFD6C7] text-[11px] font-bold text-[#262329] shadow-2xs active:scale-95 transition">
+            💧 Clear
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. CENTER INTERACTIVE LIQUID CANVAS STAGE -->
+    <section class="flex-1 relative min-h-0 flex items-center justify-center overflow-hidden">
+      <canvas id="liquid-canvas"></canvas>
+
+      <!-- Subtle Floating Gesture Hint -->
+      <div id="gesture-coach" class="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 bg-[#262329]/75 text-white backdrop-blur-xs px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide transition-opacity duration-300 whitespace-nowrap">
+        Tap a dye color or tap glass to drop • Swipe glass to swirl
+      </div>
+    </section>
+
+    <!-- 4. BOTTOM CONTROLS: DYE PIPETTES & TILT/SWIRL ROCKER -->
+    <section class="bg-[#FFFDF9] border-t border-[#E2D9CB] px-4 pt-2.5 pb-4 shrink-0 z-20 shadow-[0_-8px_24px_rgba(38,35,41,0.04)]">
+      <!-- Three Dye Dropper Buttons (Red, Yellow, Blue) -->
+      <div class="grid grid-cols-3 gap-3 mb-3">
+        <!-- Red Dropper -->
+        <button data-dye="R" class="pipette-btn group rounded-2xl border-2 border-[#E8DFD1] bg-[#FAF6F0] p-2 flex flex-col items-center justify-center relative shadow-2xs">
+          <div id="pipette-ring-R" class="w-10 h-10 rounded-full flex items-center justify-center shadow-md mb-1 transition-transform group-hover:scale-105" style="background: radial-gradient(circle at 32% 30%, #FF758F, #E63946);">
+            <div class="w-2.5 h-2.5 rounded-full bg-white/60 -translate-x-1.5 -translate-y-1.5"></div>
+          </div>
+          <span id="pipette-name-R" class="font-bold text-xs text-[#262329]">Crimson</span>
+          <span class="text-[10px] font-semibold text-[#8B8194]">+1 Drop</span>
+        </button>
+
+        <!-- Yellow Dropper -->
+        <button data-dye="Y" class="pipette-btn group rounded-2xl border-2 border-[#E8DFD1] bg-[#FAF6F0] p-2 flex flex-col items-center justify-center relative shadow-2xs">
+          <div id="pipette-ring-Y" class="w-10 h-10 rounded-full flex items-center justify-center shadow-md mb-1 transition-transform group-hover:scale-105" style="background: radial-gradient(circle at 32% 30%, #FFF07C, #F4B400);">
+            <div class="w-2.5 h-2.5 rounded-full bg-white/75 -translate-x-1.5 -translate-y-1.5"></div>
+          </div>
+          <span id="pipette-name-Y" class="font-bold text-xs text-[#262329]">Gamboge</span>
+          <span class="text-[10px] font-semibold text-[#8B8194]">+1 Drop</span>
+        </button>
+
+        <!-- Blue Dropper -->
+        <button data-dye="B" class="pipette-btn group rounded-2xl border-2 border-[#E8DFD1] bg-[#FAF6F0] p-2 flex flex-col items-center justify-center relative shadow-2xs">
+          <div id="pipette-ring-B" class="w-10 h-10 rounded-full flex items-center justify-center shadow-md mb-1 transition-transform group-hover:scale-105" style="background: radial-gradient(circle at 32% 30%, #72EFDD, #1D63DC);">
+            <div class="w-2.5 h-2.5 rounded-full bg-white/60 -translate-x-1.5 -translate-y-1.5"></div>
+          </div>
+          <span id="pipette-name-B" class="font-bold text-xs text-[#262329]">Cobalt</span>
+          <span class="text-[10px] font-semibold text-[#8B8194]">+1 Drop</span>
+        </button>
+      </div>
+
+      <!-- Tilt / Swirl Control Bar -->
+      <div class="flex items-center gap-2.5 bg-[#F6F1E9] border border-[#E2D9CB] rounded-2xl px-3 py-2">
+        <span class="text-[11px] font-extrabold uppercase tracking-wider text-[#766F7D] shrink-0">Tilt</span>
+        <input id="tilt-slider" type="range" min="-28" max="28" value="0" step="0.5" class="tilt-slider flex-1" aria-label="Tilt glass to swirl liquid" />
+        <button id="btn-auto-swirl" class="bg-[#262329] hover:bg-[#3A3540] text-white rounded-xl px-3 py-1.5 text-xs font-bold flex items-center gap-1 shrink-0 active:scale-95 transition">
+          <span>🌀</span>
+          <span>Swirl</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 5. STUDIO COLLECTION DRAWER (Unlockable Glasses & Palettes) -->
+    <div id="collection-drawer" class="hidden absolute inset-0 bg-[#262329]/50 backdrop-blur-xs z-40 flex flex-col justify-end">
+      <div class="bg-[#FFFDF9] border-t-2 border-[#E2D9CB] rounded-t-3xl p-4 shadow-2xl animate-drawer max-h-[82%] flex flex-col">
+        <div class="flex items-center justify-between pb-3 border-b border-[#EDE6DA]">
+          <div>
+            <h2 class="font-serif-display font-bold text-lg text-[#262329]">Glassware & Pigment Studio</h2>
+            <p class="text-xs text-[#766F7D]">Clear levels to unlock new vessels and dye inks</p>
+          </div>
+          <button id="btn-close-collection" class="w-8 h-8 rounded-full bg-[#F3EFE8] flex items-center justify-center font-bold text-sm text-[#262329]">✕</button>
+        </div>
+
+        <div class="overflow-y-auto py-3 space-y-4">
+          <!-- Glass Vessels -->
+          <div>
+            <span class="text-[11px] font-extrabold uppercase tracking-wider text-[#8B8194] block mb-2">Crystal Vessels</span>
+            <div id="glass-list" class="grid grid-cols-2 gap-2.5">
+              <!-- Populated via JS -->
+            </div>
+          </div>
+
+          <!-- Pigment Palettes -->
+          <div>
+            <span class="text-[11px] font-extrabold uppercase tracking-wider text-[#8B8194] block mb-2">Pigment Palettes</span>
+            <div id="palette-list" class="grid grid-cols-1 gap-2">
+              <!-- Populated via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. POLAROID / STUDIO SNAPSHOT COMPLETION MODAL -->
+    <div id="snapshot-modal" class="hidden absolute inset-0 bg-[#262329]/65 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div class="bg-[#FFFDF9] rounded-3xl p-4 w-full max-w-[345px] shadow-2xl border border-[#E2D9CB] animate-modal flex flex-col items-center">
+        <!-- Polaroid Snapshot Card -->
+        <div class="w-full bg-white border border-[#E5DDD0] rounded-2xl p-3 shadow-md flex flex-col items-center">
+          <div class="w-full flex items-center justify-between text-[10px] font-extrabold uppercase tracking-widest text-[#8B8194] mb-2">
+            <span>DYE DROP STUDIO</span>
+            <span id="snap-match-badge" class="text-[#2A9D8F]">98% MATCH</span>
+          </div>
+
+          <!-- Snapshot Canvas Image -->
+          <div class="w-full h-48 rounded-xl overflow-hidden bg-[#F7F2E9] border border-[#EDE6DA] flex items-center justify-center">
+            <img id="snapshot-img" alt="Final blended glass snapshot" class="w-full h-full object-contain" />
+          </div>
+
+          <!-- Polaroid Caption -->
+          <div class="w-full pt-3 pb-1 flex items-end justify-between">
+            <div>
+              <h3 id="snap-color-name" class="font-serif-display font-bold text-lg text-[#262329] leading-none">Sunset Tangerine</h3>
+              <p id="snap-recipe-text" class="text-xs font-semibold text-[#766F7D] mt-1">1 Red + 1 Yellow</p>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span id="snap-hex-code" class="font-mono text-xs font-bold bg-[#F6F1E9] px-2 py-1 rounded-md border border-[#E2D9CB]">#FF7A2F</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Unlock Notification Pill (if applicable) -->
+        <div id="snap-unlock-banner" class="hidden w-full mt-2.5 bg-[#FFF6E0] border border-[#F2D388] rounded-xl px-3 py-1.5 text-center text-xs font-bold text-[#7A5901]">
+          ✨ Unlocked: Potion Flask!
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="grid grid-cols-2 gap-2 w-full mt-3">
+          <button id="btn-save-snapshot" class="bg-[#F6F1E9] hover:bg-[#ECE4D7] border border-[#DCD2C2] text-[#262329] rounded-xl py-2.5 px-2 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition">
+            <span>📸</span>
+            <span>Save Snapshot</span>
+          </button>
+          <button id="btn-copy-recipe" class="bg-[#F6F1E9] hover:bg-[#ECE4D7] border border-[#DCD2C2] text-[#262329] rounded-xl py-2.5 px-2 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition">
+            <span>📋</span>
+            <span>Copy Recipe</span>
+          </button>
+        </div>
+
+        <button id="btn-next-level-modal" class="w-full mt-2.5 bg-[#262329] hover:bg-[#3A3540] text-white rounded-2xl py-3 font-bold text-sm flex items-center justify-center gap-2 shadow-md active:scale-95 transition">
+          <span>Next Color</span>
+          <span>→</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Subtle Floating Toast -->
+    <div id="toast" class="hidden absolute top-16 left-1/2 -translate-x-1/2 bg-[#262329] text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg z-50 whitespace-nowrap">
+      Saved to studio!
+    </div>
+  </main>
+
+  <script>
+    /**
+     * ============================================================================
+     * DYE DROP — REAL-TIME LIQUID PIGMENT SIMULATION & COLOR PUZZLE ENGINE
+     * ============================================================================
+     */
+
+    // --- 1. WEB AUDIO SYNTHESIZER (Water Drops, Liquid Swirl & Harp Chimes) ---
+    class LiquidAudio {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.lastSwirlTime = 0;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+
+      // Realistic resonant water droplet "bloop"
+      playDrop(dyeType = 'R', dropIndex = 0) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const basePitch = dyeType === 'R' ? 390 : dyeType === 'Y' ? 460 : 340;
+        const pitchOffset = (dropIndex % 4) * 28;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(basePitch + pitchOffset, now);
+        osc.frequency.exponentialRampToValueAtTime((basePitch + pitchOffset) * 1.95, now + 0.14);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.28, now + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.19);
+      }
+
+      // Soft filtered liquid slosh when swirling/tilting
+      playSwirl(intensity = 0.5) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        if (now - this.lastSwirlTime < 0.22) return;
+        this.lastSwirlTime = now;
+
+        const duration = 0.26;
+        const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(320 + intensity * 260, now);
+        filter.frequency.exponentialRampToValueAtTime(620 + intensity * 280, now + duration);
+        filter.Q.setValueAtTime(3.2, now);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.06 * Math.min(1, intensity), now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start(now);
+        noise.stop(now + duration);
+      }
+
+      // Crystalline harmonic arpeggio upon matching color
+      playComplete() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 987.77, 1318.51]; // Cmaj9 shimmer
+        notes.forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.075);
+
+          gain.gain.setValueAtTime(0.001, now + i * 0.075);
+          gain.gain.linearRampToValueAtTime(0.18, now + i * 0.075 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.075 + 0.75);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + i * 0.075);
+          osc.stop(now + i * 0.075 + 0.78);
+        });
+      }
+    }
+
+    const audio = new LiquidAudio();
+
+    // --- 2. SUBTRACTIVE RYB -> RGB COLOR MODEL (Real Paint/Ink Intuition) ---
+    // Maps normalized (r, y, b) pigment weights [0..1] to natural RGB via trilinear RYB interpolation
+    function rybToRgb(r, y, b, palette) {
+      // Corner colors for RYB cube adapted to active palette
+      const c000 = [235, 246, 252]; // Clear water tint
+      const c100 = palette.R;       // Red
+      const c010 = palette.Y;       // Yellow
+      const c001 = palette.B;       // Blue
+      const c110 = palette.RY;      // Orange (Red + Yellow)
+      const c011 = palette.YB;      // Green (Yellow + Blue)
+      const c101 = palette.RB;      // Violet (Red + Blue)
+      const c111 = palette.RYB;     // Earthy Umber/Moss (Red + Yellow + Blue)
+
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const mix3 = (v0, v1, t) => [
+        lerp(v0[0], v1[0], t),
+        lerp(v0[1], v1[1], t),
+        lerp(v0[2], v1[2], t)
+      ];
+
+      // Trilinear interpolation across RYB cube
+      const c00 = mix3(c000, c100, r);
+      const c10 = mix3(c010, c110, r);
+      const c01 = mix3(c001, c101, r);
+      const c11 = mix3(c011, c111, r);
+
+      const c0 = mix3(c00, c10, y);
+      const c1 = mix3(c01, c11, y);
+
+      const out = mix3(c0, c1, b);
+      return [Math.round(out[0]), Math.round(out[1]), Math.round(out[2])];
+    }
+
+    function rgbToHex([r, g, b]) {
+      return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('').toUpperCase();
+    }
+
+    // Calculate perceptual similarity percentage between two RGB colors
+    function colorSimilarity(rgb1, rgb2) {
+      const dr = rgb1[0] - rgb2[0];
+      const dg = rgb1[1] - rgb2[1];
+      const db = rgb1[2] - rgb2[2];
+      const dist = Math.sqrt(dr * dr * 0.3 + dg * dg * 0.59 + db * db * 0.11);
+      const maxDist = 215;
+      const pct = Math.max(0, Math.min(100, Math.round((1 - dist / maxDist) * 100)));
+      return pct;
+    }
+
+    // Compute normalized RYB ratios from an array of drops (e.g. ['R', 'Y'])
+    function dropsToNormalizedRYB(drops) {
+      if (!drops || drops.length === 0) return { r: 0, y: 0, b: 0, total: 0 };
+      let cR = 0, cY = 0, cB = 0;
+      drops.forEach(d => {
+        if (d === 'R') cR++;
+        if (d === 'Y') cY++;
+        if (d === 'B') cB++;
+      });
+      const maxComp = Math.max(cR, cY, cB, 1);
+      // Saturation curve so 1 drop already looks rich in water
+      const strength = Math.min(1, 0.72 + (drops.length - 1) * 0.1);
+      return {
+        r: (cR / maxComp) * strength,
+        y: (cY / maxComp) * strength,
+        b: (cB / maxComp) * strength,
+        total: drops.length
+      };
+    }
+
+    // --- 3. UNLOCKABLE PALETTES & VESSELS ---
+    const PALETTES = [
+      {
+        id: 'watercolor',
+        name: 'Primary Watercolor',
+        desc: 'Classic translucent studio pigments',
+        unlockLevel: 1,
+        names: { R: 'Crimson', Y: 'Gamboge', B: 'Cobalt' },
+        R: [232, 56, 72],
+        Y: [250, 204, 28],
+        B: [36, 108, 224],
+        RY: [255, 118, 34],
+        YB: [44, 182, 104],
+        RB: [134, 62, 198],
+        RYB: [118, 92, 68]
+      },
+      {
+        id: 'pastel',
+        name: 'Pastel Gouache',
+        desc: 'Soft milky botanical tints',
+        unlockLevel: 3,
+        names: { R: 'Rosewater', Y: 'Buttercream', B: 'Periwinkle' },
+        R: [244, 124, 146],
+        Y: [253, 226, 116],
+        B: [112, 168, 244],
+        RY: [255, 168, 122],
+        YB: [126, 218, 174],
+        RB: [176, 138, 232],
+        RYB: [164, 144, 128]
+      },
+      {
+        id: 'neon',
+        name: 'Botanical Neon Ink',
+        desc: 'High-chroma luminous extracts',
+        unlockLevel: 5,
+        names: { R: 'Hibiscus', Y: 'Citron', B: 'Lagoon' },
+        R: [255, 42, 109],
+        Y: [249, 240, 2],
+        B: [5, 155, 255],
+        RY: [255, 128, 0],
+        YB: [18, 232, 126],
+        RB: [168, 44, 255],
+        RYB: [122, 108, 94]
+      }
+    ];
+
+    const VESSELS = [
+      { id: 'tumbler', name: 'Classic Tumbler', unlockLevel: 1, icon: '🥛' },
+      { id: 'flask', name: 'Alchemist Flask', unlockLevel: 2, icon: '⚗️' },
+      { id: 'highball', name: 'Tall Highball', unlockLevel: 4, icon: '🍹' },
+      { id: 'lotus', name: 'Lotus Tea Bowl', unlockLevel: 6, icon: '🍵' }
+    ];
+
+    // --- 4. 6 HANDCRAFTED LEVELS ---
+    const LEVELS = [
+      {
+        id: 1,
+        name: 'Sunset Tangerine',
+        recipe: ['R', 'Y'],
+        maxDrops: 3,
+        hint: '2 drops • Warm citrus glow'
+      },
+      {
+        id: 2,
+        name: 'Meadow Mint',
+        recipe: ['Y', 'B'],
+        maxDrops: 3,
+        hint: '2 drops • Fresh spring leaf'
+      },
+      {
+        id: 3,
+        name: 'Royal Berry',
+        recipe: ['R', 'B'],
+        maxDrops: 3,
+        hint: '2 drops • Deep twilight plum'
+      },
+      {
+        id: 4,
+        name: 'Lime Zest',
+        recipe: ['Y', 'Y', 'B'],
+        maxDrops: 4,
+        hint: '3 drops • Extra sunny yellow'
+      },
+      {
+        id: 5,
+        name: 'Coral Peach',
+        recipe: ['R', 'R', 'Y'],
+        maxDrops: 4,
+        hint: '3 drops • Rich ruby warmth'
+      },
+      {
+        id: 6,
+        name: 'Forest Moss',
+        recipe: ['R', 'Y', 'Y', 'B'],
+        maxDrops: 5,
+        hint: '4 drops • All three pigments'
+      }
+    ];
+
+    // --- 5. GAME STATE ---
+    const state = {
+      levelIndex: 0,
+      highestCleared: 0,
+      activeVessel: 'tumbler',
+      activePaletteId: 'watercolor',
+      drops: [],          // e.g. ['R', 'Y']
+      fallingDrops: [],   // animated droplets falling from top into water
+      pigmentClouds: [],  // swirling organic dye blobs inside glass
+      ripples: [],        // surface ripples on impact
+      tiltAngle: 0,       // current glass angle in degrees (-28 to +28)
+      targetTilt: 0,
+      angularVelocity: 0,
+      swirlEnergy: 0,     // 0..1 how well blended the floating clouds are
+      wavePhase: 0,
+      isDraggingCanvas: false,
+      lastPointerX: 0,
+      lastPointerY: 0,
+      selectedDyeForTap: 'R',
+      levelCompleted: false
+    };
+
+    function getActivePalette() {
+      return PALETTES.find(p => p.id === state.activePaletteId) || PALETTES[0];
+    }
+
+    function getTargetRGB() {
+      const lvl = LEVELS[state.levelIndex];
+      const pal = getActivePalette();
+      const norm = dropsToNormalizedRYB(lvl.recipe);
+      return rybToRgb(norm.r, norm.y, norm.b, pal);
+    }
+
+    // --- 6. CANVAS SETUP & VESSEL GEOMETRY ---
+    const canvas = document.getElementById('liquid-canvas');
+    const ctx = canvas.getContext('2d');
+    let canvasW = 360;
+    let canvasH = 420;
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvasW = rect.width;
+      canvasH = rect.height;
+      canvas.width = canvasW * dpr;
+      canvas.height = canvasH * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // Returns vessel silhouette path & bounding box centered at (0, 0)
+    function getVesselMetrics(vesselId) {
+      const scale = Math.min(canvasW / 370, canvasH / 410, 1.12);
+      switch (vesselId) {
+        case 'flask':
+          return { topW: 54 * scale, botW: 176 * scale, height: 225 * scale, neckH: 58 * scale, scale };
+        case 'highball':
+          return { topW: 118 * scale, botW: 108 * scale, height: 245 * scale, neckH: 0, scale };
+        case 'lotus':
+          return { topW: 196 * scale, botW: 94 * scale, height: 175 * scale, neckH: 0, scale };
+        case 'tumbler':
+        default:
+          return { topW: 152 * scale, botW: 122 * scale, height: 215 * scale, neckH: 0, scale };
+      }
+    }
+
+    function traceVesselPath(context, m) {
+      const halfTop = m.topW / 2;
+      const halfBot = m.botW / 2;
+      const topY = -m.height / 2;
+      const botY = m.height / 2;
+      const cornerR = 18 * m.scale;
+
+      context.beginPath();
+      if (state.activeVessel === 'flask') {
+        const shoulderY = topY + m.neckH;
+        context.moveTo(-halfTop, topY);
+        context.lineTo(-halfTop, shoulderY);
+        context.quadraticCurveTo(-halfBot * 1.05, shoulderY + 35 * m.scale, -halfBot, botY - cornerR);
+        context.quadraticCurveTo(-halfBot, botY, -halfBot + cornerR, botY);
+        context.lineTo(halfBot - cornerR, botY);
+        context.quadraticCurveTo(halfBot, botY, halfBot, botY - cornerR);
+        context.quadraticCurveTo(halfBot * 1.05, shoulderY + 35 * m.scale, halfTop, shoulderY);
+        context.lineTo(halfTop, topY);
+      } else if (state.activeVessel === 'lotus') {
+        context.moveTo(-halfTop, topY);
+        context.bezierCurveTo(-halfTop * 1.05, topY + m.height * 0.65, -halfBot * 1.25, botY, -halfBot + cornerR, botY);
+        context.lineTo(halfBot - cornerR, botY);
+        context.bezierCurveTo(halfBot * 1.25, botY, halfTop * 1.05, topY + m.height * 0.65, halfTop, topY);
+      } else {
+        // Classic Tumbler or Tall Highball
+        context.moveTo(-halfTop, topY);
+        context.lineTo(-halfBot, botY - cornerR);
+        context.quadraticCurveTo(-halfBot, botY, -halfBot + cornerR, botY);
+        context.lineTo(halfBot - cornerR, botY);
+        context.quadraticCurveTo(halfBot, botY, halfBot, botY - cornerR);
+        context.lineTo(halfTop, topY);
+      }
+    }
+
+    // --- 7. DYE DROP & SWIRL PHYSICS ---
+    function dropDye(dyeType, customX = null) {
+      const lvl = LEVELS[state.levelIndex];
+      if (state.levelCompleted) return;
+      if (state.drops.length >= lvl.maxDrops) {
+        showToast(`Max ${lvl.maxDrops} drops reached! Swirl or Undo.`);
+        return;
+      }
+
+      audio.playDrop(dyeType, state.drops.length);
+      state.selectedDyeForTap = dyeType;
+      state.drops.push(dyeType);
+
+      const m = getVesselMetrics(state.activeVessel);
+      const spread = (m.topW * 0.36);
+      const dropOffsetX = customX !== null
+        ? Math.max(-spread, Math.min(spread, customX - canvasW / 2))
+        : (Math.random() - 0.5) * spread;
+
+      const pal = getActivePalette();
+      const rgb = pal[dyeType];
+
+      // Spawn falling glossy droplet
+      state.fallingDrops.push({
+        x: canvasW / 2 + dropOffsetX,
+        y: canvasH / 2 - m.height / 2 - 42,
+        targetY: canvasH / 2 - m.height * 0.16,
+        vy: 4.5,
+        radius: 9,
+        rgb,
+        dyeType,
+        localX: dropOffsetX
+      });
+
+      // Slightly reduce blend uniformity when fresh unmixed dye enters
+      state.swirlEnergy = Math.max(0.15, state.swirlEnergy * 0.55);
+
+      document.getElementById('gesture-coach').style.opacity = '0.9';
+      updateHUD();
+    }
+
+    function spawnPigmentClouds(localX, localY, rgb, dyeType) {
+      const m = getVesselMetrics(state.activeVessel);
+      // Spawn 9 organic blooming watercolor ink puffs per drop
+      for (let i = 0; i < 9; i++) {
+        const angle = (Math.PI * 2 * i) / 9 + Math.random() * 0.5;
+        const speed = 0.4 + Math.random() * 1.1;
+        state.pigmentClouds.push({
+          x: localX + (Math.random() - 0.5) * 14,
+          y: localY + Math.random() * 16,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed * 0.8 + 0.45,
+          radius: (16 + Math.random() * 14) * m.scale,
+          maxRadius: (48 + Math.random() * 24) * m.scale,
+          rgb: [...rgb],
+          dyeType,
+          alpha: 0.52,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+
+      // Surface ripple
+      state.ripples.push({
+        x: localX,
+        radius: 4,
+        maxRadius: m.topW * 0.42,
+        alpha: 0.75
+      });
+    }
+
+    function applySwirlImpulse(strength = 1.0) {
+      if (state.drops.length === 0) return;
+      audio.playSwirl(strength);
+
+      // Increase blend factor smoothly
+      state.swirlEnergy = Math.min(1, state.swirlEnergy + 0.14 * strength);
+
+      // Add rotational vortex velocity to floating pigment clouds
+      state.pigmentClouds.forEach((p, idx) => {
+        const dir = idx % 2 === 0 ? 1 : -1;
+        p.vx += (-p.y * 0.045 + dir * 1.8) * strength;
+        p.vy += (p.x * 0.045) * strength;
+      });
+    }
+
+    function triggerAutoSwirl() {
+      if (state.drops.length === 0) {
+        showToast('Drop a color into the water first!');
+        return;
+      }
+      // Smoothly rock the glass left-right-center
+      let step = 0;
+      const rockInterval = setInterval(() => {
+        step++;
+        if (step === 1) state.targetTilt = -22;
+        else if (step === 2) state.targetTilt = 22;
+        else if (step === 3) state.targetTilt = -12;
+        else {
+          state.targetTilt = 0;
+          document.getElementById('tilt-slider').value = 0;
+          clearInterval(rockInterval);
+        }
+        document.getElementById('tilt-slider').value = state.targetTilt;
+        applySwirlImpulse(1.35);
+      }, 150);
+    }
+
+    // --- 8. SIMULATION UPDATE LOOP ---
+    function updateSimulation() {
+      const m = getVesselMetrics(state.activeVessel);
+      const waterTopY = -m.height * 0.22;
+      const waterBotY = m.height * 0.46;
+
+      // Smooth spring tilt physics
+      const prevTilt = state.tiltAngle;
+      state.tiltAngle += (state.targetTilt - state.tiltAngle) * 0.16;
+      const tiltDelta = Math.abs(state.tiltAngle - prevTilt);
+
+      if (tiltDelta > 0.25 && state.drops.length > 0) {
+        applySwirlImpulse(Math.min(1.4, tiltDelta * 0.14));
+      }
+
+      state.wavePhase += 0.055 + tiltDelta * 0.03;
+
+      // Update falling droplets
+      for (let i = state.fallingDrops.length - 1; i >= 0; i--) {
+        const d = state.fallingDrops[i];
+        d.vy += 0.55;
+        d.y += d.vy;
+        if (d.y >= d.targetY) {
+          spawnPigmentClouds(d.localX, waterTopY + 12, d.rgb, d.dyeType);
+          state.fallingDrops.splice(i, 1);
+        }
+      }
+
+      // Update ripples
+      for (let i = state.ripples.length - 1; i >= 0; i--) {
+        const r = state.ripples[i];
+        r.radius += 1.4;
+        r.alpha -= 0.025;
+        if (r.alpha <= 0 || r.radius >= r.maxRadius) {
+          state.ripples.splice(i, 1);
+        }
+      }
+
+      // Compute current true blended RGB of all dropped pigments
+      const pal = getActivePalette();
+      const norm = dropsToNormalizedRYB(state.drops);
+      const blendedRGB = state.drops.length > 0
+        ? rybToRgb(norm.r, norm.y, norm.b, pal)
+        : [235, 246, 252];
+
+      // Update pigment clouds (bloom, drift, gravity tilt, and gradual color homogenization)
+      const tiltRad = (state.tiltAngle * Math.PI) / 180;
+      const gravX = Math.sin(tiltRad) * 0.35;
+
+      state.pigmentClouds.forEach(p => {
+        p.phase += 0.03;
+        p.radius += (p.maxRadius - p.radius) * 0.025;
+
+        // Fluid drift + tilt slosh
+        p.vx = p.vx * 0.94 + gravX + Math.cos(p.phase) * 0.04;
+        p.vy = p.vy * 0.94 + Math.sin(p.phase) * 0.04;
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Keep clouds inside vessel liquid bounds
+        const maxW = (m.botW * 0.42);
+        if (p.x < -maxW) { p.x = -maxW; p.vx *= -0.6; }
+        if (p.x > maxW) { p.x = maxW; p.vx *= -0.6; }
+        if (p.y < waterTopY + 10) { p.y = waterTopY + 10; p.vy *= -0.5; }
+        if (p.y > waterBotY - 12) { p.y = waterBotY - 12; p.vy *= -0.5; }
+
+        // Blend individual cloud colors toward unified RYB mixture as swirlEnergy increases
+        const blendRate = 0.015 + state.swirlEnergy * 0.06;
+        p.rgb[0] += (blendedRGB[0] - p.rgb[0]) * blendRate;
+        p.rgb[1] += (blendedRGB[1] - p.rgb[1]) * blendRate;
+        p.rgb[2] += (blendedRGB[2] - p.rgb[2]) * blendRate;
+      });
+
+      // Natural slow diffusion even when resting
+      if (state.drops.length > 0 && state.swirlEnergy < 1) {
+        state.swirlEnergy = Math.min(1, state.swirlEnergy + 0.0018);
+      }
+
+      updateLiveColorReadout(blendedRGB);
+    }
+
+    // --- 9. CANVAS RENDERING ---
+    function renderGlassScene(targetCtx = ctx, width = canvasW, height = canvasH, includeBackdrop = false) {
+      targetCtx.clearRect(0, 0, width, height);
+
+      if (includeBackdrop) {
+        const bgGrad = targetCtx.createLinearGradient(0, 0, 0, height);
+        bgGrad.addColorStop(0, '#FAF6F0');
+        bgGrad.addColorStop(1, '#EFE7DA');
+        targetCtx.fillStyle = bgGrad;
+        targetCtx.fillRect(0, 0, width, height);
+      }
+
+      const cx = width / 2;
+      const cy = height / 2 + 12;
+      const m = getVesselMetrics(state.activeVessel);
+
+      // Soft studio table shadow beneath glass
+      targetCtx.save();
+      targetCtx.translate(cx, cy + m.height / 2 + 10);
+      const shadowGrad = targetCtx.createRadialGradient(0, 0, 8, 0, 0, m.botW * 0.72);
+      shadowGrad.addColorStop(0, 'rgba(38, 35, 41, 0.22)');
+      shadowGrad.addColorStop(1, 'rgba(38, 35, 41, 0)');
+      targetCtx.fillStyle = shadowGrad;
+      targetCtx.beginPath();
+      targetCtx.ellipse(0, 0, m.botW * 0.72, 14 * m.scale, 0, 0, Math.PI * 2);
+      targetCtx.fill();
+      targetCtx.restore();
+
+      // Render falling droplets outside glass transform
+      state.fallingDrops.forEach(d => {
+        targetCtx.save();
+        targetCtx.fillStyle = `rgb(${d.rgb[0]}, ${d.rgb[1]}, ${d.rgb[2]})`;
+        targetCtx.beginPath();
+        // Teardrop silhouette
+        targetCtx.moveTo(d.x, d.y - d.radius * 1.5);
+        targetCtx.bezierCurveTo(
+          d.x + d.radius, d.y - d.radius * 0.2,
+          d.x + d.radius, d.y + d.radius,
+          d.x, d.y + d.radius
+        );
+        targetCtx.bezierCurveTo(
+          d.x - d.radius, d.y + d.radius,
+          d.x - d.radius, d.y - d.radius * 0.2,
+          d.x, d.y - d.radius * 1.5
+        );
+        targetCtx.fill();
+
+        // Glossy specular highlight on drop
+        targetCtx.fillStyle = 'rgba(255,255,255,0.65)';
+        targetCtx.beginPath();
+        targetCtx.arc(d.x - 2.5, d.y + 1, 2.2, 0, Math.PI * 2);
+        targetCtx.fill();
+        targetCtx.restore();
+      });
+
+      // Transform into Tilted Glass Coordinate Space
+      targetCtx.save();
+      targetCtx.translate(cx, cy);
+      targetCtx.rotate((state.tiltAngle * Math.PI) / 180);
+
+      // 1. Back Glass Wall Fill
+      traceVesselPath(targetCtx, m);
+      targetCtx.fillStyle = 'rgba(255, 255, 255, 0.32)';
+      targetCtx.fill();
+
+      // 2. Clip to Interior of Vessel for Liquid & Dye Clouds
+      targetCtx.save();
+      traceVesselPath(targetCtx, m);
+      targetCtx.clip();
+
+      const waterTopY = -m.height * 0.22;
+      const waterBotY = m.height * 0.52;
+      const pal = getActivePalette();
+      const norm = dropsToNormalizedRYB(state.drops);
+      const blendedRGB = state.drops.length > 0
+        ? rybToRgb(norm.r, norm.y, norm.b, pal)
+        : [222, 241, 250];
+
+      // Counter-rotate liquid surface slightly so water stays horizontal when glass tilts!
+      targetCtx.save();
+      targetCtx.rotate((-state.tiltAngle * Math.PI) / 180 * 0.72);
+
+      // Base Liquid Body Fill (transitions from clear water to blended hue as swirlEnergy rises)
+      const baseMixAlpha = state.drops.length === 0 ? 0.45 : (0.35 + state.swirlEnergy * 0.58);
+      const liqGrad = targetCtx.createLinearGradient(0, waterTopY, 0, waterBotY);
+      liqGrad.addColorStop(0, `rgba(${blendedRGB[0]}, ${blendedRGB[1]}, ${blendedRGB[2]}, ${baseMixAlpha * 0.85})`);
+      liqGrad.addColorStop(1, `rgba(${Math.max(0, blendedRGB[0] - 18)}, ${Math.max(0, blendedRGB[1] - 18)}, ${Math.max(0, blendedRGB[2] - 18)}, ${Math.min(0.95, baseMixAlpha + 0.12)})`);
+
+      targetCtx.fillStyle = liqGrad;
+      targetCtx.beginPath();
+      const waveW = m.topW * 1.4;
+      targetCtx.moveTo(-waveW, waterTopY);
+      for (let wx = -waveW; wx <= waveW; wx += 12) {
+        const wy = waterTopY + Math.sin(wx * 0.045 + state.wavePhase) * (2.5 + Math.abs(state.tiltAngle) * 0.12);
+        targetCtx.lineTo(wx, wy);
+      }
+      targetCtx.lineTo(waveW, waterBotY + 40);
+      targetCtx.lineTo(-waveW, waterBotY + 40);
+      targetCtx.closePath();
+      targetCtx.fill();
+
+      // Meniscus Highlight Line on Water Surface
+      targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+      targetCtx.lineWidth = 2.5;
+      targetCtx.beginPath();
+      for (let wx = -waveW; wx <= waveW; wx += 12) {
+        const wy = waterTopY + Math.sin(wx * 0.045 + state.wavePhase) * (2.5 + Math.abs(state.tiltAngle) * 0.12);
+        if (wx === -waveW) targetCtx.moveTo(wx, wy);
+        else targetCtx.lineTo(wx, wy);
+      }
+      targetCtx.stroke();
+
+      targetCtx.restore(); // end counter-rotated base liquid
+
+      // 3. Organic Swirling Pigment Clouds (Watercolor Diffusion)
+      state.pigmentClouds.forEach(p => {
+        const r = Math.round(p.rgb[0]);
+        const g = Math.round(p.rgb[1]);
+        const b = Math.round(p.rgb[2]);
+        const cloudGrad = targetCtx.createRadialGradient(p.x, p.y, 2, p.x, p.y, p.radius);
+        cloudGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${p.alpha})`);
+        cloudGrad.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, ${p.alpha * 0.45})`);
+        cloudGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+
+        targetCtx.fillStyle = cloudGrad;
+        targetCtx.beginPath();
+        targetCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        targetCtx.fill();
+      });
+
+      // 4. Surface Impact Ripples
+      state.ripples.forEach(rip => {
+        targetCtx.strokeStyle = `rgba(255, 255, 255, ${rip.alpha})`;
+        targetCtx.lineWidth = 2;
+        targetCtx.beginPath();
+        targetCtx.ellipse(rip.x, waterTopY + 2, rip.radius, rip.radius * 0.25, 0, 0, Math.PI * 2);
+        targetCtx.stroke();
+      });
+
+      targetCtx.restore(); // End vessel interior clip
+
+      // 5. Crystal Glass Rim, Thick Glass Base & Specular Reflections
+      traceVesselPath(targetCtx, m);
+      targetCtx.strokeStyle = 'rgba(38, 35, 41, 0.24)';
+      targetCtx.lineWidth = 3;
+      targetCtx.stroke();
+
+      // Thick Crystal Base Refraction
+      const halfBot = m.botW / 2;
+      const botY = m.height / 2;
+      targetCtx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      targetCtx.beginPath();
+      targetCtx.roundRect(-halfBot + 4, botY - 12 * m.scale, m.botW - 8, 11 * m.scale, 6);
+      targetCtx.fill();
+
+      // Left Vertical Glass Reflection Streak
+      targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
+      targetCtx.lineWidth = 5 * m.scale;
+      targetCtx.lineCap = 'round';
+      targetCtx.beginPath();
+      targetCtx.moveTo(-m.topW * 0.36, -m.height * 0.34);
+      targetCtx.lineTo(-m.botW * 0.34, m.height * 0.32);
+      targetCtx.stroke();
+
+      // Top Rim Ellipse
+      targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      targetCtx.lineWidth = 2.5;
+      targetCtx.beginPath();
+      targetCtx.ellipse(0, -m.height / 2, m.topW / 2, 6 * m.scale, 0, 0, Math.PI * 2);
+      targetCtx.stroke();
+
+      targetCtx.restore();
+    }
+
+    function animationLoop() {
+      updateSimulation();
+      renderGlassScene();
+      requestAnimationFrame(animationLoop);
+    }
+
+    // --- 10. HUD & MATCH EVALUATION ---
+    function updateLiveColorReadout(blendedRGB) {
+      const swatchLive = document.getElementById('swatch-live');
+      const hexLabel = document.getElementById('live-hex-label');
+      const clarityText = document.getElementById('swirl-clarity-text');
+      const matchPercentText = document.getElementById('match-percent-text');
+      const matchPill = document.getElementById('match-pill');
+      const swirlStatusLabel = document.getElementById('swirl-status-label');
+
+      if (state.drops.length === 0) {
+        swatchLive.style.backgroundColor = '#EBF5FA';
+        hexLabel.textContent = 'CLEAR';
+        clarityText.textContent = 'Pure water';
+        matchPercentText.textContent = '0%';
+        matchPill.className = 'px-2.5 py-1 rounded-full bg-[#F3EFE8] border border-[#E2D9CB] flex items-center gap-1 transition-all duration-300';
+        swirlStatusLabel.textContent = 'Drop dye to begin';
+        return;
+      }
+
+      const hex = rgbToHex(blendedRGB);
+      swatchLive.style.backgroundColor = hex;
+      hexLabel.textContent = hex;
+
+      const targetRGB = getTargetRGB();
+      const rawSim = colorSimilarity(blendedRGB, targetRGB);
+      // Effective match requires swirling so unmixed drops encourage tilting/swirling
+      const swirlFactor = 0.55 + 0.45 * state.swirlEnergy;
+      const effectiveMatch = Math.min(100, Math.round(rawSim * swirlFactor));
+
+      matchPercentText.textContent = `${effectiveMatch}%`;
+
+      if (state.swirlEnergy < 0.72) {
+        clarityText.textContent = `Swirling ${Math.round(state.swirlEnergy * 100)}%`;
+        swirlStatusLabel.textContent = 'Swipe or tilt to swirl!';
+      } else {
+        clarityText.textContent = 'Well blended';
+        swirlStatusLabel.textContent = effectiveMatch >= 92 ? '✨ Perfect match!' : 'Adjust drops or swirl';
+      }
+
+      if (effectiveMatch >= 92) {
+        matchPill.className = 'px-2.5 py-1 rounded-full bg-[#D8F3DC] border border-[#52B788] flex items-center gap-1 scale-105 transition-all duration-300';
+      } else {
+        matchPill.className = 'px-2.5 py-1 rounded-full bg-[#F3EFE8] border border-[#E2D9CB] flex items-center gap-1 transition-all duration-300';
+      }
+
+      // Check Level Win Condition (>= 92% match and well-swirled >= 0.78)
+      if (!state.levelCompleted && effectiveMatch >= 92 && state.swirlEnergy >= 0.78 && state.fallingDrops.length === 0) {
+        state.levelCompleted = true;
+        setTimeout(() => completeCurrentLevel(effectiveMatch, hex), 450);
+      }
+    }
+
+    function updateHUD() {
+      const lvl = LEVELS[state.levelIndex];
+      const pal = getActivePalette();
+
+      document.getElementById('hud-level-num').textContent = `Level ${lvl.id} of ${LEVELS.length}`;
+      document.getElementById('hud-level-name').textContent = lvl.name;
+      document.getElementById('target-color-label').textContent = lvl.name;
+      document.getElementById('target-hint-recipe').textContent = lvl.hint;
+
+      const targetRGB = getTargetRGB();
+      document.getElementById('swatch-target').style.backgroundColor = rgbToHex(targetRGB);
+
+      // Update pipette names & colors from active palette
+      ['R', 'Y', 'B'].forEach(code => {
+        document.getElementById(`pipette-name-${code}`).textContent = pal.names[code];
+        const rgb = pal[code];
+        document.getElementById(`pipette-ring-${code}`).style.background =
+          `radial-gradient(circle at 32% 30%, rgba(255,255,255,0.65), rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]}))`;
+      });
+
+      // Render Drop Pips
+      const pipsContainer = document.getElementById('drop-pips-container');
+      pipsContainer.innerHTML = '';
+      for (let i = 0; i < lvl.maxDrops; i++) {
+        const pip = document.createElement('span');
+        const usedDye = state.drops[i];
+        if (usedDye) {
+          const c = pal[usedDye];
+          pip.className = 'w-4 h-4 rounded-full border border-[#262329]/30 shadow-2xs transition-transform scale-105';
+          pip.style.backgroundColor = `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+        } else {
+          pip.className = 'w-4 h-4 rounded-full border-2 border-dashed border-[#C7BEB0] bg-transparent';
+        }
+        pipsContainer.appendChild(pip);
+      }
+
+      // Enable/disable buttons
+      document.getElementById('btn-undo').disabled = state.drops.length === 0;
+      document.getElementById('btn-prev-lvl').disabled = state.levelIndex === 0;
+      document.getElementById('btn-next-lvl').disabled = state.levelIndex >= LEVELS.length - 1;
+
+      const outOfDrops = state.drops.length >= lvl.maxDrops;
+      document.querySelectorAll('.pipette-btn').forEach(btn => {
+        btn.disabled = outOfDrops;
+      });
+    }
+
+    function loadLevel(idx) {
+      state.levelIndex = idx;
+      state.drops = [];
+      state.fallingDrops = [];
+      state.pigmentClouds = [];
+      state.ripples = [];
+      state.tiltAngle = 0;
+      state.targetTilt = 0;
+      state.swirlEnergy = 0;
+      state.levelCompleted = false;
+      document.getElementById('tilt-slider').value = 0;
+      updateHUD();
+    }
+
+    // --- 11. LEVEL COMPLETION & STUDIO SNAPSHOT HOOK ---
+    function completeCurrentLevel(matchPct, hexCode) {
+      audio.playComplete();
+      state.tiltAngle = 0;
+      state.targetTilt = 0;
+      document.getElementById('tilt-slider').value = 0;
+
+      // Render a crisp offscreen snapshot of the finished glass
+      const snapCanvas = document.createElement('canvas');
+      snapCanvas.width = 480;
+      snapCanvas.height = 380;
+      const snapCtx = snapCanvas.getContext('2d');
+      renderGlassScene(snapCtx, 480, 380, true);
+      document.getElementById('snapshot-img').src = snapCanvas.toDataURL('image/png');
+
+      const lvl = LEVELS[state.levelIndex];
+      const pal = getActivePalette();
+      document.getElementById('snap-color-name').textContent = lvl.name;
+      document.getElementById('snap-match-badge').textContent = `${matchPct}% MATCH`;
+      document.getElementById('snap-hex-code').textContent = hexCode;
+
+      // Format recipe summary
+      const counts = { R: 0, Y: 0, B: 0 };
+      state.drops.forEach(d => counts[d]++);
+      const parts = [];
+      if (counts.R) parts.push(`${counts.R} ${pal.names.R}`);
+      if (counts.Y) parts.push(`${counts.Y} ${pal.names.Y}`);
+      if (counts.B) parts.push(`${counts.B} ${pal.names.B}`);
+      document.getElementById('snap-recipe-text').textContent = parts.join(' + ');
+
+      // Check new unlocks
+      const nextLvlNum = lvl.id + 1;
+      if (nextLvlNum > state.highestCleared) {
+        state.highestCleared = nextLvlNum;
+      }
+
+      const unlockBanner = document.getElementById('snap-unlock-banner');
+      const newlyUnlockedVessel = VESSELS.find(v => v.unlockLevel === nextLvlNum);
+      const newlyUnlockedPalette = PALETTES.find(p => p.unlockLevel === nextLvlNum);
+
+      if (newlyUnlockedVessel) {
+        unlockBanner.textContent = `✨ Studio Unlock: ${newlyUnlockedVessel.icon} ${newlyUnlockedVessel.name}!`;
+        unlockBanner.classList.remove('hidden');
+      } else if (newlyUnlockedPalette) {
+        unlockBanner.textContent = `🎨 Studio Unlock: ${newlyUnlockedPalette.name} Palette!`;
+        unlockBanner.classList.remove('hidden');
+      } else {
+        unlockBanner.classList.add('hidden');
+      }
+
+      const nextBtn = document.getElementById('btn-next-level-modal');
+      nextBtn.innerHTML = state.levelIndex >= LEVELS.length - 1
+        ? `<span>Replay Collection</span><span>↻</span>`
+        : `<span>Next Color</span><span>→</span>`;
+
+      document.getElementById('snapshot-modal').classList.remove('hidden');
+    }
+
+    // --- 12. STUDIO COLLECTION DRAWER ---
+    function renderCollectionDrawer() {
+      const unlockedTier = Math.max(state.highestCleared, state.levelIndex + 1);
+
+      const glassList = document.getElementById('glass-list');
+      glassList.innerHTML = '';
+      VESSELS.forEach(v => {
+        const unlocked = unlockedTier >= v.unlockLevel;
+        const active = state.activeVessel === v.id;
+        const btn = document.createElement('button');
+        btn.className = `p-2.5 rounded-2xl border-2 text-left flex items-center gap-2 transition ${
+          active ? 'border-[#262329] bg-[#F6F1E9]' : 'border-[#E5DDD0] bg-white'
+        } ${!unlocked ? 'opacity-50' : 'active:scale-95'}`;
+        btn.innerHTML = `
+          <span class="text-2xl">${unlocked ? v.icon : '🔒'}</span>
+          <div>
+            <div class="font-bold text-xs text-[#262329]">${v.name}</div>
+            <div class="text-[10px] font-semibold text-[#8B8194]">${unlocked ? (active ? 'Equipped' : 'Tap to equip') : `Clear Lvl ${v.unlockLevel - 1}`}</div>
+          </div>
+        `;
+        btn.addEventListener('click', () => {
+          if (!unlocked) {
+            showToast(`Clear Level ${v.unlockLevel - 1} to unlock ${v.name}!`);
+            return;
+          }
+          state.activeVessel = v.id;
+          renderCollectionDrawer();
+          showToast(`Equipped ${v.name}`);
+        });
+        glassList.appendChild(btn);
+      });
+
+      const paletteList = document.getElementById('palette-list');
+      paletteList.innerHTML = '';
+      PALETTES.forEach(p => {
+        const unlocked = unlockedTier >= p.unlockLevel;
+        const active = state.activePaletteId === p.id;
+        const btn = document.createElement('button');
+        btn.className = `p-2.5 rounded-2xl border-2 text-left flex items-center justify-between transition ${
+          active ? 'border-[#262329] bg-[#F6F1E9]' : 'border-[#E5DDD0] bg-white'
+        } ${!unlocked ? 'opacity-50' : 'active:scale-95'}`;
+        btn.innerHTML = `
+          <div>
+            <div class="font-bold text-xs text-[#262329]">${unlocked ? '' : '🔒 '}${p.name}</div>
+            <div class="text-[10px] font-semibold text-[#8B8194]">${unlocked ? p.desc : `Clear Level ${p.unlockLevel - 1} to unlock`}</div>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="w-4 h-4 rounded-full border border-black/15" style="background: rgb(${p.R.join(',')})"></span>
+            <span class="w-4 h-4 rounded-full border border-black/15" style="background: rgb(${p.Y.join(',')})"></span>
+            <span class="w-4 h-4 rounded-full border border-black/15" style="background: rgb(${p.B.join(',')})"></span>
+          </div>
+        `;
+        btn.addEventListener('click', () => {
+          if (!unlocked) {
+            showToast(`Clear Level ${p.unlockLevel - 1} to unlock ${p.name}!`);
+            return;
+          }
+          state.activePaletteId = p.id;
+          renderCollectionDrawer();
+          updateHUD();
+          showToast(`Switched to ${p.name}`);
+        });
+        paletteList.appendChild(btn);
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.remove('hidden');
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => toast.classList.add('hidden'), 2200);
+    }
+
+    // --- 13. EVENT LISTENERS (Touch/Drag Swirl, Tap Drop, Controls) ---
+    document.querySelectorAll('.pipette-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const dye = btn.getAttribute('data-dye');
+        dropDye(dye);
+      });
+    });
+
+    // Direct Canvas Pointer Interactions: Tap to drop selected dye, Drag/Swipe to tilt & swirl
+    let pointerDownPos = null;
+    canvas.addEventListener('pointerdown', (e) => {
+      state.isDraggingCanvas = true;
+      const rect = canvas.getBoundingClientRect();
+      state.lastPointerX = e.clientX - rect.left;
+      state.lastPointerY = e.clientY - rect.top;
+      pointerDownPos = { x: state.lastPointerX, y: state.lastPointerY };
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (!state.isDraggingCanvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const dx = x - state.lastPointerX;
+      state.lastPointerX = x;
+
+      // Map horizontal swipe to glass tilt angle
+      state.targetTilt = Math.max(-28, Math.min(28, state.targetTilt + dx * 0.38));
+      document.getElementById('tilt-slider').value = state.targetTilt;
+      if (Math.abs(dx) > 1.5) {
+        applySwirlImpulse(Math.min(1.3, Math.abs(dx) * 0.08));
+      }
+    });
+
+    function endCanvasDrag(e) {
+      if (!state.isDraggingCanvas) return;
+      state.isDraggingCanvas = false;
+
+      // If pointer barely moved, treat as a tap above/inside the glass to drop dye
+      if (pointerDownPos && e.clientX !== undefined) {
+        const rect = canvas.getBoundingClientRect();
+        const upX = e.clientX - rect.left;
+        const upY = e.clientY - rect.top;
+        const dist = Math.hypot(upX - pointerDownPos.x, upY - pointerDownPos.y);
+        if (dist < 8) {
+          dropDye(state.selectedDyeForTap, upX);
+        }
+      }
+      pointerDownPos = null;
+
+      // Gently spring tilt back toward resting upright angle
+      state.targetTilt = 0;
+      document.getElementById('tilt-slider').value = 0;
+    }
+
+    canvas.addEventListener('pointerup', endCanvasDrag);
+    canvas.addEventListener('pointercancel', endCanvasDrag);
+
+    // Tilt Slider Input
+    const tiltSlider = document.getElementById('tilt-slider');
+    tiltSlider.addEventListener('input', (e) => {
+      state.targetTilt = parseFloat(e.target.value);
+    });
+    tiltSlider.addEventListener('change', () => {
+      state.targetTilt = 0;
+      tiltSlider.value = 0;
+    });
+
+    document.getElementById('btn-auto-swirl').addEventListener('click', triggerAutoSwirl);
+
+    // Undo & Reset
+    document.getElementById('btn-undo').addEventListener('click', () => {
+      if (state.drops.length === 0 || state.levelCompleted) return;
+      state.drops.pop();
+      // Remove the latest batch of 9 clouds
+      state.pigmentClouds.splice(Math.max(0, state.pigmentClouds.length - 9), 9);
+      audio.playSwirl(0.6);
+      updateHUD();
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      audio.playSwirl(0.8);
+      loadLevel(state.levelIndex);
+    });
+
+    // Level Navigation
+    document.getElementById('btn-prev-lvl').addEventListener('click', () => {
+      if (state.levelIndex > 0) loadLevel(state.levelIndex - 1);
+    });
+    document.getElementById('btn-next-lvl').addEventListener('click', () => {
+      if (state.levelIndex < LEVELS.length - 1) loadLevel(state.levelIndex + 1);
+    });
+
+    // Mute Toggle
+    document.getElementById('btn-mute').addEventListener('click', () => {
+      const muted = audio.toggleMute();
+      document.getElementById('btn-mute').textContent = muted ? '🔇' : '🔊';
+    });
+
+    // Studio Collection Drawer
+    document.getElementById('btn-open-collection').addEventListener('click', () => {
+      renderCollectionDrawer();
+      document.getElementById('collection-drawer').classList.remove('hidden');
+    });
+    document.getElementById('btn-close-collection').addEventListener('click', () => {
+      document.getElementById('collection-drawer').classList.add('hidden');
+    });
+
+    // Snapshot Modal Actions
+    document.getElementById('btn-save-snapshot').addEventListener('click', () => {
+      const imgSrc = document.getElementById('snapshot-img').src;
+      const link = document.createElement('a');
+      link.download = `dye-drop-${LEVELS[state.levelIndex].name.toLowerCase().replace(/\s+/g, '-')}.png`;
+      link.href = imgSrc;
+      link.click();
+      showToast('📸 Studio snapshot downloaded!');
+    });
+
+    document.getElementById('btn-copy-recipe').addEventListener('click', () => {
+      const lvl = LEVELS[state.levelIndex];
+      const hex = document.getElementById('snap-hex-code').textContent;
+      const recipe = document.getElementById('snap-recipe-text').textContent;
+      const text = `💧 Dye Drop Studio — ${lvl.name} (${hex})\nRecipe: ${recipe}`;
+
+      const temp = document.createElement('textarea');
+      temp.value = text;
+      document.body.appendChild(temp);
+      temp.select();
+      try {
+        document.execCommand('copy');
+        showToast('📋 Color recipe copied!');
+      } catch (e) {
+        showToast('Recipe ready!');
+      }
+      document.body.removeChild(temp);
+    });
+
+    document.getElementById('btn-next-level-modal').addEventListener('click', () => {
+      document.getElementById('snapshot-modal').classList.add('hidden');
+      const nextIdx = (state.levelIndex + 1) % LEVELS.length;
+      loadLevel(nextIdx);
+    });
+
+    // Boot Application
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      loadLevel(0);
+      requestAnimationFrame(animationLoop);
+    });
+  </script>
+</body>
+</html>

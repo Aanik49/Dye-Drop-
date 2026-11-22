@@ -1,0 +1,260 @@
+import {
+  DAILY_LOGIN_REWARDS,
+  LEVELS_BY_TYPE,
+  LEVEL_TYPE_ORDER,
+  generateDailyTasksForDate,
+  getNextLevelType,
+  getTodayDateString,
+} from './data';
+import type {DailyTaskKind, LevelTypeId, PaletteId, SavedGameState, VesselId} from './types';
+
+const STORAGE_KEY = 'dye_drop_save_v1';
+
+export function createInitialState(): SavedGameState {
+  const today = getTodayDateString();
+  return {
+    diamonds: 100, // Instruction 7: After installing, user gets 100 diamonds
+    soundEnabled: true,
+    musicEnabled: true,
+    unlockedTypes: ['crimson'], // Instruction 11: Initially unlock all 10 levels of Crimson
+    levelProgress: {},
+    ownedVessels: ['tumbler'], // Vessel 1 default unlocked & selected
+    equippedVessel: 'tumbler',
+    ownedPalettes: ['watercolor'], // Pigment 1 default unlocked & selected
+    equippedPalette: 'watercolor',
+    streakDay: 1,
+    lastLoginClaimDate: null,
+    dailyTasksDate: today,
+    dailyTasks: generateDailyTasksForDate(today),
+    selectedType: 'crimson',
+    selectedLevelNumber: 1,
+  };
+}
+
+export function loadSavedState(): SavedGameState {
+  const fallback = createInitialState();
+  if (typeof window === 'undefined') return fallback;
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<SavedGameState>;
+    const today = getTodayDateString();
+
+    const dailyTasks =
+      parsed.dailyTasksDate === today && Array.isArray(parsed.dailyTasks) && parsed.dailyTasks.length === 2
+        ? parsed.dailyTasks
+        : generateDailyTasksForDate(today);
+
+    const unlockedTypes: LevelTypeId[] =
+      Array.isArray(parsed.unlockedTypes) && parsed.unlockedTypes.length > 0
+        ? (parsed.unlockedTypes.filter((t): t is LevelTypeId =>
+            LEVEL_TYPE_ORDER.includes(t as LevelTypeId)
+          ) as LevelTypeId[])
+        : ['crimson'];
+
+    if (!unlockedTypes.includes('crimson')) {
+      unlockedTypes.unshift('crimson');
+    }
+
+    return {
+      ...fallback,
+      ...parsed,
+      unlockedTypes,
+      ownedVessels:
+        Array.isArray(parsed.ownedVessels) && parsed.ownedVessels.length > 0
+          ? (parsed.ownedVessels as VesselId[])
+          : ['tumbler'],
+      ownedPalettes:
+        Array.isArray(parsed.ownedPalettes) && parsed.ownedPalettes.length > 0
+          ? (parsed.ownedPalettes as PaletteId[])
+          : ['watercolor'],
+      dailyTasksDate: today,
+      dailyTasks,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+export function persistState(state: SavedGameState): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export function isTypeFullyCompleted(state: SavedGameState, typeId: LevelTypeId): boolean {
+  const levels = LEVELS_BY_TYPE[typeId];
+  return levels.every((lvl) => state.levelProgress[lvl.id]?.completed === true);
+}
+
+export function countTypeCompleted(state: SavedGameState, typeId: LevelTypeId): number {
+  const levels = LEVELS_BY_TYPE[typeId];
+  return levels.filter((lvl) => state.levelProgress[lvl.id]?.completed === true).length;
+}
+
+export function canClaimDailyLogin(state: SavedGameState): boolean {
+  const today = getTodayDateString();
+  return state.lastLoginClaimDate !== today;
+}
+
+export function getActiveStreakDayToClaim(state: SavedGameState): number {
+  const today = getTodayDateString();
+  if (!state.lastLoginClaimDate) return 1;
+  if (state.lastLoginClaimDate === today) return state.streakDay;
+
+  // Check if yesterday was claimed to continue streak, otherwise reset to Day 1
+  const last = new Date(`${state.lastLoginClaimDate}T00:00:00`);
+  const now = new Date(`${today}T00:00:00`);
+  const diffDays = Math.round((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 1) {
+    return state.streakDay >= 7 ? 1 : state.streakDay + 1;
+  }
+  return 1;
+}
+
+export function claimDailyLoginReward(state: SavedGameState): {
+  nextState: SavedGameState;
+  awarded: number;
+  dayClaimed: number;
+} {
+  if (!canClaimDailyLogin(state)) {
+    return {nextState: state, awarded: 0, dayClaimed: state.streakDay};
+  }
+  const today = getTodayDateString();
+  const dayClaimed = getActiveStreakDayToClaim(state);
+  const awarded = DAILY_LOGIN_REWARDS[Math.max(0, Math.min(6, dayClaimed - 1))];
+
+  const nextState: SavedGameState = {
+    ...state,
+    diamonds: state.diamonds + awarded,
+    streakDay: dayClaimed,
+    lastLoginClaimDate: today,
+  };
+  return {nextState, awarded, dayClaimed};
+}
+
+export function incrementDailyTaskProgress(
+  state: SavedGameState,
+  kind: DailyTaskKind,
+  amount = 1
+): SavedGameState {
+  const today = getTodayDateString();
+  const baseTasks =
+    state.dailyTasksDate === today ? state.dailyTasks : generateDailyTasksForDate(today);
+
+  const updated = baseTasks.map((task) => {
+    if (task.kind !== kind || task.claimed) return task;
+    return {
+      ...task,
+      progress: Math.min(task.target, task.progress + amount),
+    };
+  });
+
+  return {
+    ...state,
+    dailyTasksDate: today,
+    dailyTasks: updated,
+  };
+}
+
+export function claimDailyTask(
+  state: SavedGameState,
+  taskId: string
+): {nextState: SavedGameState; awarded: number} {
+  let awarded = 0;
+  const updatedTasks = state.dailyTasks.map((task) => {
+    if (task.id === taskId && !task.claimed && task.progress >= task.target) {
+      awarded = task.reward; // 10 diamonds
+      return {...task, claimed: true};
+    }
+    return task;
+  });
+
+  if (awarded === 0) return {nextState: state, awarded: 0};
+
+  return {
+    nextState: {
+      ...state,
+      diamonds: state.diamonds + awarded,
+      dailyTasks: updatedTasks,
+    },
+    awarded,
+  };
+}
+
+export function recordLevelCompletion(
+  state: SavedGameState,
+  typeId: LevelTypeId,
+  levelId: string,
+  stars: number
+): {
+  nextState: SavedGameState;
+  diamondsDelta: number;
+  wasStarUpgrade: boolean;
+  newlyUnlockedType: LevelTypeId | null;
+  completedAllOfCurrentType: boolean;
+} {
+  const prev = state.levelProgress[levelId] || {
+    completed: false,
+    bestStars: 0,
+    diamondsEarned: 0,
+  };
+
+  // Instruction 10: 3 stars = 10 diamonds, 1 or 2 stars = 5 diamonds.
+  // Retry upgrade from 1-2 stars (5 earned) to 3 stars (10 target) gives +5 diamonds.
+  const targetDiamonds = stars >= 3 ? 10 : stars >= 1 ? 5 : 0;
+  const diamondsDelta = Math.max(0, targetDiamonds - prev.diamondsEarned);
+  const wasStarUpgrade = prev.diamondsEarned > 0 && diamondsDelta > 0;
+  const starsGained = Math.max(0, stars - prev.bestStars);
+
+  const wasTypeAlreadyDone = isTypeFullyCompleted(state, typeId);
+
+  let nextState: SavedGameState = {
+    ...state,
+    diamonds: state.diamonds + diamondsDelta,
+    levelProgress: {
+      ...state.levelProgress,
+      [levelId]: {
+        completed: true,
+        bestStars: Math.max(prev.bestStars, stars),
+        diamondsEarned: Math.max(prev.diamondsEarned, targetDiamonds),
+      },
+    },
+  };
+
+  // Update daily tasks linked to level completion
+  nextState = incrementDailyTaskProgress(nextState, 'complete_levels', 1);
+  if (stars >= 3) {
+    nextState = incrementDailyTaskProgress(nextState, 'perfect_blends', 1);
+  }
+  if (stars > 0) {
+    nextState = incrementDailyTaskProgress(nextState, 'earn_stars', Math.max(starsGained, stars));
+  }
+
+  const isTypeNowDone = isTypeFullyCompleted(nextState, typeId);
+  let newlyUnlockedType: LevelTypeId | null = null;
+  const completedAllOfCurrentType = !wasTypeAlreadyDone && isTypeNowDone;
+
+  if (isTypeNowDone) {
+    const candidateNext = getNextLevelType(typeId);
+    if (candidateNext && !nextState.unlockedTypes.includes(candidateNext)) {
+      newlyUnlockedType = candidateNext;
+      nextState = {
+        ...nextState,
+        unlockedTypes: [...nextState.unlockedTypes, candidateNext],
+      };
+    }
+  }
+
+  return {
+    nextState,
+    diamondsDelta,
+    wasStarUpgrade,
+    newlyUnlockedType,
+    completedAllOfCurrentType,
+  };
+}
