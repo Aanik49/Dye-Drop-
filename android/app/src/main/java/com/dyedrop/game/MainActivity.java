@@ -2,7 +2,6 @@ package com.dyedrop.game;
 
 import android.annotation.SuppressLint;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.WebResourceRequest;
@@ -13,7 +12,6 @@ import android.webkit.WebViewClient;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.IOException;
@@ -24,7 +22,7 @@ import java.util.Map;
 
 /**
  * Dye Drop Android Native Host Activity.
- * Compatible with Android 4.4 KitKat (API 19) through latest Android versions (API 35+).
+ * Compatible with Android 5.0 Lollipop (API 21) through latest Android versions (API 35+).
  */
 public class MainActivity extends AppCompatActivity {
     private static final String LOCAL_HOST = "appassets.androidplatform.net";
@@ -48,7 +46,6 @@ public class MainActivity extends AppCompatActivity {
         settings.setMediaPlaybackRequiresUserGesture(false);
 
         webView.setWebViewClient(new WebViewClient() {
-            @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             @Nullable
             @Override
             public WebResourceResponse shouldInterceptRequest(
@@ -58,17 +55,6 @@ public class MainActivity extends AppCompatActivity {
                 WebResourceResponse local = serveLocalAsset(request.getUrl());
                 if (local != null) return local;
                 return super.shouldInterceptRequest(view, request);
-            }
-
-            @SuppressWarnings("deprecation")
-            @Nullable
-            @Override
-            public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
-                if (url != null) {
-                    WebResourceResponse local = serveLocalAsset(Uri.parse(url));
-                    if (local != null) return local;
-                }
-                return super.shouldInterceptRequest(view, url);
             }
         });
 
@@ -92,16 +78,17 @@ public class MainActivity extends AppCompatActivity {
         try {
             InputStream stream = getAssets().open("public/" + path);
             String mimeType = guessMimeType(path);
-            String encoding = mimeType.startsWith("text/") || mimeType.contains("javascript") || mimeType.contains("json") || mimeType.contains("svg")
-                ? "UTF-8"
-                : null;
+            String encoding =
+                mimeType.startsWith("text/")
+                    || mimeType.contains("javascript")
+                    || mimeType.contains("json")
+                    || mimeType.contains("svg")
+                    ? "UTF-8"
+                    : null;
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                Map<String, String> headers = new HashMap<>();
-                headers.put("Access-Control-Allow-Origin", "*");
-                return new WebResourceResponse(mimeType, encoding, 200, "OK", headers, stream);
-            }
-            return new WebResourceResponse(mimeType, encoding, stream);
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Access-Control-Allow-Origin", "*");
+            return new WebResourceResponse(mimeType, encoding, 200, "OK", headers, stream);
         } catch (IOException ignored) {
             return null;
         }
@@ -126,6 +113,7 @@ public class MainActivity extends AppCompatActivity {
         return "application/octet-stream";
     }
 
+    @SuppressWarnings("deprecation")
     private void enableImmersiveFullscreen() {
         View decorView = getWindow().getDecorView();
         decorView.setSystemUiVisibility(
@@ -146,6 +134,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public void onBackPressed() {
         if (webView != null && webView.canGoBack()) {
