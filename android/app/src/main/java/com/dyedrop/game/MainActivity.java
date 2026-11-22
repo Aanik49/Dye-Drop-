@@ -1,6 +1,7 @@
 package com.dyedrop.game;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -10,10 +11,6 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -22,15 +19,15 @@ import java.util.Map;
 
 /**
  * Dye Drop Android Native Host Activity.
- * Compatible with Android 5.0 Lollipop (API 21) through latest Android versions (API 35+).
+ * Zero external library dependencies; supports Android 5.0 (API 21) through Android 15+ (API 35).
  */
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
     private static final String LOCAL_HOST = "appassets.androidplatform.net";
     private WebView webView;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         webView = new WebView(this);
@@ -46,11 +43,10 @@ public class MainActivity extends AppCompatActivity {
         settings.setMediaPlaybackRequiresUserGesture(false);
 
         webView.setWebViewClient(new WebViewClient() {
-            @Nullable
             @Override
             public WebResourceResponse shouldInterceptRequest(
-                @NonNull WebView view,
-                @NonNull WebResourceRequest request
+                WebView view,
+                WebResourceRequest request
             ) {
                 WebResourceResponse local = serveLocalAsset(request.getUrl());
                 if (local != null) return local;
@@ -62,8 +58,7 @@ public class MainActivity extends AppCompatActivity {
         enableImmersiveFullscreen();
     }
 
-    @Nullable
-    private WebResourceResponse serveLocalAsset(@Nullable Uri uri) {
+    private WebResourceResponse serveLocalAsset(Uri uri) {
         if (uri == null || !LOCAL_HOST.equals(uri.getHost())) {
             return null;
         }

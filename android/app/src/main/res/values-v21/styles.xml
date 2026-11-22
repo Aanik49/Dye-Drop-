@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.DyeDrop" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="android:windowBackground">#FFF8D6</item>
-        <item name="android:statusBarColor">#FFF8D6</item>
-        <item name="android:navigationBarColor">#141414</item>
-    </style>
-</resources>
