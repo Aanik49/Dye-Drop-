@@ -1,33 +1,27 @@
 import React, {useEffect, useRef, useState} from 'react';
+import {Play} from 'lucide-react';
 import {audio} from '../game/audio';
-import {APP_ICON_URL} from '../game/data';
-import {StarburstSpark} from './ComicIcons';
+import {DyeDropHeroLogo, LobbyHeroFlask} from './ComicIcons';
+import {PastelNatureBackdrop} from './PastelNatureBackdrop';
 
 interface SplashScreenProps {
   onComplete: () => void;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({onComplete}) => {
-  const [stage, setStage] = useState<'falling' | 'splash' | 'ready'>('falling');
+  const [stage, setStage] = useState<'falling' | 'ready'>('falling');
   const playedAutoSoundRef = useRef(false);
 
   useEffect(() => {
-    const t1 = window.setTimeout(() => {
-      setStage('splash');
+    const t = window.setTimeout(() => {
+      setStage('ready');
       if (!playedAutoSoundRef.current) {
         playedAutoSoundRef.current = true;
         audio.playSplash();
       }
-    }, 520);
+    }, 450);
 
-    const t2 = window.setTimeout(() => {
-      setStage('ready');
-    }, 1150);
-
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-    };
+    return () => window.clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -50,129 +44,49 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({onComplete}) => {
   return (
     <div
       onClick={handleEnter}
-      className="relative w-full h-full flex flex-col items-center justify-between py-10 px-6 overflow-hidden cursor-pointer select-none"
-      style={{
-        backgroundColor: '#FFF8D6',
-        ['--dot-color' as string]: 'rgba(245, 180, 50, 0.36)',
-      }}
+      className="relative w-full h-full flex flex-col items-center justify-between py-12 px-6 overflow-hidden cursor-pointer select-none"
     >
-      {/* Halftone comic background */}
-      <div className="absolute inset-0 comic-halftone-edge opacity-80 pointer-events-none" />
+      <PastelNatureBackdrop variant="lobby" />
 
-      {/* Rotating Comic Sunburst Rays */}
-      <svg
-        viewBox="0 0 400 400"
-        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[155%] max-w-[680px] aspect-square pointer-events-none transition-all duration-700 ${
-          stage === 'falling' ? 'scale-50 opacity-0' : 'scale-100 opacity-100'
+      {/* Hero Stacked Cartoon Logo */}
+      <div
+        className={`relative z-10 flex flex-col items-center mt-4 transition-all duration-500 ${
+          stage === 'falling' ? 'opacity-0 -translate-y-4 scale-95' : 'opacity-100 translate-y-0 scale-100'
         }`}
-        aria-hidden="true"
       >
-        <g transform="translate(200, 200)">
-          {Array.from({length: 14}).map((_, i) => {
-            const a1 = (i * 360) / 14;
-            const a2 = a1 + 12;
-            const rad1 = (a1 * Math.PI) / 180;
-            const rad2 = (a2 * Math.PI) / 180;
-            return (
-              <polygon
-                key={i}
-                points={`0,0 ${Math.cos(rad1) * 210},${Math.sin(rad1) * 210} ${Math.cos(rad2) * 210},${
-                  Math.sin(rad2) * 210
-                }`}
-                fill={i % 2 === 0 ? 'rgba(255, 133, 122, 0.24)' : 'rgba(255, 224, 71, 0.35)'}
-              />
-            );
-          })}
-        </g>
-      </svg>
-
-      {/* Top Tag */}
-      <div className="relative z-10 text-xs font-extrabold tracking-[0.2em] uppercase text-[#141414]/70">
-        Liquid Color Mixing Studio
+        <DyeDropHeroLogo className="w-[266px] h-[134px] drop-shadow-[0_8px_14px_rgba(12,68,78,0.22)]" />
+        <p className="font-display font-bold text-sm tracking-wide text-[#134D59] mt-1">
+          Mix · Match · Complete
+        </p>
       </div>
 
-      {/* Center Animated Hero Emblem + Droplet Splash */}
-      <div className="relative z-10 flex flex-col items-center justify-center my-auto">
-        <div className="relative flex items-center justify-center mb-5">
-          {/* Comic Starburst Accent behind Icon */}
-          <StarburstSpark
-            color="#FF7D78"
-            className={`absolute -top-6 -left-7 w-11 h-11 transition-all duration-500 ${
-              stage === 'falling' ? 'scale-0 opacity-0' : 'scale-100 opacity-100 animate-sparkle'
-            }`}
-          />
-          <StarburstSpark
-            color="#4CE4F2"
-            className={`absolute -bottom-4 -right-7 w-10 h-10 transition-all duration-500 delay-100 ${
-              stage === 'falling' ? 'scale-0 opacity-0' : 'scale-100 opacity-100 animate-sparkle'
-            }`}
-          />
-
-          {/* Splash Ripple Rings */}
-          <div
-            className={`absolute w-44 h-44 rounded-full border-4 border-[#141414] transition-all duration-700 pointer-events-none ${
-              stage === 'falling' ? 'scale-50 opacity-0' : 'scale-125 opacity-0'
-            }`}
-          />
-
-          {/* Bouncing Game Icon Frame */}
-          <div
-            className={`w-36 h-36 sm:w-40 sm:h-40 rounded-[32px] overflow-hidden comic-box-lg bg-[#FFE047] transition-transform duration-500 ease-out ${
-              stage === 'falling'
-                ? '-translate-y-24 scale-75'
-                : stage === 'splash'
-                ? 'translate-y-0 scale-110'
-                : 'translate-y-0 scale-100 animate-float-slow'
-            }`}
-          >
-            <img
-              src={APP_ICON_URL}
-              alt="Dye Drop Mascot Icon"
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </div>
-
-        {/* Stacked Comic Title Lockup */}
-        <div
-          className={`relative text-center transition-all duration-500 ${
-            stage === 'falling' ? 'opacity-0 scale-75 translate-y-6' : 'opacity-100 scale-100 translate-y-0'
-          }`}
-        >
-          <div className="font-display font-bold text-6xl sm:text-7xl leading-[0.88] tracking-tight text-[#FF6B63] comic-text-stroke-lg">
-            DYE
-          </div>
-          <div className="font-display font-bold text-6xl sm:text-7xl leading-[0.9] tracking-tight text-[#FFE047] comic-text-stroke-lg -mt-1">
-            DROP
-          </div>
-        </div>
-
-        {/* Animated Liquid Color Dots */}
-        <div className="flex items-center gap-3 mt-5">
-          <span className="w-5 h-5 rounded-full bg-[#E83848] border-[3px] border-[#141414] shadow-[2px_2px_0_#141414]" />
-          <span className="w-5 h-5 rounded-full bg-[#FACC1C] border-[3px] border-[#141414] shadow-[2px_2px_0_#141414]" />
-          <span className="w-5 h-5 rounded-full bg-[#246CE0] border-[3px] border-[#141414] shadow-[2px_2px_0_#141414]" />
-        </div>
+      {/* Center Layered Erlenmeyer Flask */}
+      <div
+        className={`relative z-10 transition-all duration-500 ${
+          stage === 'falling' ? 'scale-90 opacity-0' : 'scale-100 opacity-100 animate-float-slow'
+        }`}
+      >
+        <LobbyHeroFlask className="w-[172px] h-[186px]" />
       </div>
 
-      {/* Bottom Start CTA */}
-      <div className="relative z-10 w-full max-w-[300px] flex flex-col items-center gap-2.5">
+      {/* Bottom Glossy Emerald Play CTA */}
+      <div className="relative z-10 w-full max-w-[264px] flex flex-col items-center gap-3 mb-2">
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             handleEnter();
           }}
-          className={`w-full py-3.5 px-6 rounded-2xl bg-[#B8FF00] hover:bg-[#C6FF2E] comic-btn font-display font-bold text-2xl text-[#141414] tracking-wide flex items-center justify-center gap-3 cursor-pointer transition-opacity duration-300 ${
-            stage === 'ready' ? 'opacity-100' : 'opacity-90'
-          }`}
+          className="relative w-full h-[62px] rounded-full pastel-play-btn flex items-center justify-center gap-3 cursor-pointer overflow-hidden"
         >
-          <span>TAP TO PLAY</span>
-          <span className="text-2xl leading-none">➔</span>
+          <span className="pointer-events-none absolute top-1.5 left-6 w-12 h-2 rounded-full bg-white/50" />
+          <Play className="w-7 h-7 text-white fill-white" />
+          <span className="font-display font-bold text-[28px] text-white tracking-wide cartoon-text-shadow leading-none">
+            Tap to Play
+          </span>
         </button>
-        <p className="text-xs font-bold text-[#141414]/75 text-center">
-          Tap to Drop · Swipe or Tilt to Swirl
+        <p className="text-xs font-bold text-[#C8FBF1] text-center">
+          Drop Pigments · Mix &amp; Match the Target
         </p>
       </div>
     </div>

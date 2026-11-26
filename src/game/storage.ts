@@ -2,11 +2,19 @@ import {
   DAILY_LOGIN_REWARDS,
   LEVELS_BY_TYPE,
   LEVEL_TYPE_ORDER,
+  PACK_BOOK_BONUS_DIAMONDS,
   generateDailyTasksForDate,
   getNextLevelType,
   getTodayDateString,
 } from './data';
-import type {DailyTaskKind, LevelTypeId, PaletteId, SavedGameState, VesselId} from './types';
+import type {
+  DailyTaskKind,
+  LevelTypeId,
+  PaletteId,
+  RecipeBookEntry,
+  SavedGameState,
+  VesselId,
+} from './types';
 
 const STORAGE_KEY = 'dye_drop_save_v1';
 
@@ -28,6 +36,8 @@ export function createInitialState(): SavedGameState {
     dailyTasks: generateDailyTasksForDate(today),
     selectedType: 'crimson',
     selectedLevelNumber: 1,
+    recipeBook: {},
+    claimedBookBonuses: [],
   };
 }
 
@@ -69,6 +79,12 @@ export function loadSavedState(): SavedGameState {
         Array.isArray(parsed.ownedPalettes) && parsed.ownedPalettes.length > 0
           ? (parsed.ownedPalettes as PaletteId[])
           : ['watercolor'],
+      recipeBook: parsed.recipeBook && typeof parsed.recipeBook === 'object' ? parsed.recipeBook : {},
+      claimedBookBonuses: Array.isArray(parsed.claimedBookBonuses)
+        ? (parsed.claimedBookBonuses.filter((t): t is LevelTypeId =>
+            LEVEL_TYPE_ORDER.includes(t as LevelTypeId)
+          ) as LevelTypeId[])
+        : [],
       dailyTasksDate: today,
       dailyTasks,
     };
@@ -96,6 +112,42 @@ export function countTypeCompleted(state: SavedGameState, typeId: LevelTypeId): 
   return levels.filter((lvl) => state.levelProgress[lvl.id]?.completed === true).length;
 }
 
+export function countRecipeBookPackEntries(state: SavedGameState, typeId: LevelTypeId): number {
+  const levels = LEVELS_BY_TYPE[typeId];
+  return levels.filter(
+    (lvl) => Boolean(state.recipeBook[lvl.id]) || state.levelProgress[lvl.id]?.completed === true
+  ).length;
+}
+
+export function hasClaimableRecipeBookBonus(state: SavedGameState): boolean {
+  return LEVEL_TYPE_ORDER.some(
+    (typeId) =>
+      countRecipeBookPackEntries(state, typeId) >= 10 &&
+      !state.claimedBookBonuses.includes(typeId)
+  );
+}
+
+export function claimRecipeBookBonus(
+  state: SavedGameState,
+  typeId: LevelTypeId
+): {nextState: SavedGameState; awarded: number} {
+  if (
+    countRecipeBookPackEntries(state, typeId) < 10 ||
+    state.claimedBookBonuses.includes(typeId)
+  ) {
+    return {nextState: state, awarded: 0};
+  }
+  const awarded = PACK_BOOK_BONUS_DIAMONDS;
+  return {
+    nextState: {
+      ...state,
+      diamonds: state.diamonds + awarded,
+      claimedBookBonuses: [...state.claimedBookBonuses, typeId],
+    },
+    awarded,
+  };
+}
+
 export function canClaimDailyLogin(state: SavedGameState): boolean {
   const today = getTodayDateString();
   return state.lastLoginClaimDate !== today;
@@ -106,7 +158,6 @@ export function getActiveStreakDayToClaim(state: SavedGameState): number {
   if (!state.lastLoginClaimDate) return 1;
   if (state.lastLoginClaimDate === today) return state.streakDay;
 
-  // Check if yesterday was claimed to continue streak, otherwise reset to Day 1
   const last = new Date(`${state.lastLoginClaimDate}T00:00:00`);
   const now = new Date(`${today}T00:00:00`);
   const diffDays = Math.round((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
@@ -190,7 +241,8 @@ export function recordLevelCompletion(
   state: SavedGameState,
   typeId: LevelTypeId,
   levelId: string,
-  stars: number
+  stars: number,
+  recipeBookEntry?: RecipeBookEntry
 ): {
   nextState: SavedGameState;
   diamondsDelta: number;
@@ -204,8 +256,6 @@ export function recordLevelCompletion(
     diamondsEarned: 0,
   };
 
-  // Instruction 10: 3 stars = 10 diamonds, 1 or 2 stars = 5 diamonds.
-  // Retry upgrade from 1-2 stars (5 earned) to 3 stars (10 target) gives +5 diamonds.
   const targetDiamonds = stars >= 3 ? 10 : stars >= 1 ? 5 : 0;
   const diamondsDelta = Math.max(0, targetDiamonds - prev.diamondsEarned);
   const wasStarUpgrade = prev.diamondsEarned > 0 && diamondsDelta > 0;
@@ -213,9 +263,22 @@ export function recordLevelCompletion(
 
   const wasTypeAlreadyDone = isTypeFullyCompleted(state, typeId);
 
+  const prevBookEntry = state.recipeBook[levelId];
+  const nextBook =
+    recipeBookEntry && (!prevBookEntry || stars >= prevBookEntry.stars)
+      ? {
+          ...state.recipeBook,
+          [levelId]: {
+            ...recipeBookEntry,
+            stars: Math.max(prevBookEntry?.stars || 0, stars),
+          },
+        }
+      : state.recipeBook;
+
   let nextState: SavedGameState = {
     ...state,
     diamonds: state.diamonds + diamondsDelta,
+    recipeBook: nextBook,
     levelProgress: {
       ...state.levelProgress,
       [levelId]: {
@@ -226,7 +289,6 @@ export function recordLevelCompletion(
     },
   };
 
-  // Update daily tasks linked to level completion
   nextState = incrementDailyTaskProgress(nextState, 'complete_levels', 1);
   if (stars >= 3) {
     nextState = incrementDailyTaskProgress(nextState, 'perfect_blends', 1);

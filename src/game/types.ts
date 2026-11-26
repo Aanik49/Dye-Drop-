@@ -1,4 +1,6 @@
-export type DyeCode = 'R' | 'Y' | 'B';
+export type PrimaryDyeCode = 'R' | 'Y' | 'B';
+export type ModifierDyeCode = 'W' | 'K' | 'D'; // W = Milk/Lighten, K = Charcoal/Darken, D = Dilute/Clear Water
+export type DyeCode = PrimaryDyeCode | ModifierDyeCode;
 
 export type LevelTypeId = 'crimson' | 'marigold' | 'forest' | 'ocean' | 'velvet' | 'shadow';
 
@@ -7,6 +9,8 @@ export type VesselId = 'tumbler' | 'flask' | 'highball' | 'lotus' | 'chalice' | 
 export type PaletteId = 'watercolor' | 'pastel' | 'neon' | 'royal';
 
 export type ScreenMode = 'splash' | 'lobby' | 'gameplay';
+
+export type LayerSlot = 'bottom' | 'top';
 
 export interface LevelTypeTheme {
   id: LevelTypeId;
@@ -21,8 +25,10 @@ export interface LevelTypeTheme {
   playCtaBg: string;
   gameplayStageBg: string;
   gameplayAccent: string;
-  tilePalette: [string, string, string, string];
+  tilePalette: string[];
   tagline: string;
+  hasDilute: boolean;
+  hasTintShade: boolean;
 }
 
 export interface LevelDef {
@@ -33,6 +39,11 @@ export interface LevelDef {
   recipe: DyeCode[];
   maxDrops: number;
   hint: string;
+  isLayered?: boolean;
+  bottomRecipe?: DyeCode[];
+  topRecipe?: DyeCode[];
+  maxDropsBottom?: number;
+  maxDropsTop?: number;
 }
 
 export interface PaletteDef {
@@ -40,7 +51,7 @@ export interface PaletteDef {
   name: string;
   desc: string;
   price: number; // 0 for default
-  names: Record<DyeCode, string>;
+  names: Record<PrimaryDyeCode, string>;
   R: [number, number, number];
   Y: [number, number, number];
   B: [number, number, number];
@@ -82,6 +93,26 @@ export interface LevelProgress {
   diamondsEarned: number; // 0, 5, or 10
 }
 
+export interface RecipeBookEntry {
+  levelId: string;
+  typeId: LevelTypeId;
+  levelNumber: number;
+  levelName: string;
+  isLayered: boolean;
+  hexCode: string;
+  bottomHexCode?: string;
+  topHexCode?: string;
+  recipeText: string;
+  drops: DyeCode[];
+  bottomDrops?: DyeCode[];
+  topDrops?: DyeCode[];
+  stars: number;
+  matchPercent: number;
+  vesselId: VesselId;
+  paletteId: PaletteId;
+  solvedAt: string;
+}
+
 export interface SavedGameState {
   diamonds: number;
   soundEnabled: boolean;
@@ -98,4 +129,6 @@ export interface SavedGameState {
   dailyTasks: DailyTask[];
   selectedType: LevelTypeId;
   selectedLevelNumber: number;
+  recipeBook: Record<string, RecipeBookEntry>;
+  claimedBookBonuses: LevelTypeId[];
 }

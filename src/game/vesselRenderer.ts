@@ -1,5 +1,5 @@
-import {dropsToNormalizedRYB, rybToRgb} from './colorEngine';
-import type {DyeCode, PaletteDef, VesselId} from './types';
+import {getRecipeRgb} from './colorEngine';
+import type {DyeCode, LayerSlot, PaletteDef, PrimaryDyeCode, VesselId} from './types';
 
 export interface FallingDrop {
   x: number;
@@ -10,6 +10,7 @@ export interface FallingDrop {
   rgb: [number, number, number];
   dyeType: DyeCode;
   localX: number;
+  layer?: LayerSlot;
 }
 
 export interface PigmentCloud {
@@ -23,6 +24,7 @@ export interface PigmentCloud {
   dyeType: DyeCode;
   alpha: number;
   phase: number;
+  layer?: LayerSlot;
 }
 
 export interface SurfaceRipple {
@@ -41,26 +43,76 @@ export interface VesselMetrics {
   scale: number;
 }
 
+export interface ColorPipeInfo {
+  code: PrimaryDyeCode;
+  x: number;
+  topY: number;
+  width: number;
+  height: number;
+  nozzleY: number;
+}
+
+/* Exact 3 Glass Color Pipes layout attached to a sliding rail beneath the Gameplay HUD bar */
+export function getColorPipeLayout(
+  canvasW: number,
+  canvasH: number,
+  railOffset = 0
+): ColorPipeInfo[] {
+  const pipeW = Math.max(36, Math.min(46, canvasW * 0.115));
+  const pipeH = Math.max(58, Math.min(84, canvasH * 0.245));
+  const spacing = Math.max(74, Math.min(94, canvasW * 0.235));
+  const cx = canvasW / 2;
+  const topY = 0;
+
+  const codes: PrimaryDyeCode[] = ['B', 'Y', 'R'];
+  return codes.map((code, idx) => {
+    const x = cx + (idx - 1) * spacing + railOffset;
+    return {
+      code,
+      x,
+      topY,
+      width: pipeW,
+      height: pipeH,
+      nozzleY: topY + pipeH + 6,
+    };
+  });
+}
+
+export function getPipeSpacing(canvasW: number): number {
+  return Math.max(74, Math.min(94, canvasW * 0.235));
+}
+
+/* Computes vessel center Y accounting for the 3 pipes hanging above when active */
+export function getVesselCenterY(canvasH: number, showPipes = false): number {
+  if (showPipes) {
+    return canvasH * 0.64;
+  }
+  return canvasH * 0.52;
+}
+
 export function getVesselMetrics(
   vesselId: VesselId,
   canvasW: number,
-  canvasH: number
+  canvasH: number,
+  showPipes = false
 ): VesselMetrics {
-  const scale = Math.min(canvasW / 345, canvasH / 370, 1.12);
+  const maxHFactor = showPipes ? 0.52 : 0.62;
+  const scale = Math.min(canvasW / 355, (canvasH * maxHFactor) / 195, 1.08);
   switch (vesselId) {
     case 'flask':
-      return {topW: 54 * scale, botW: 176 * scale, height: 215 * scale, neckH: 54 * scale, stemH: 0, scale};
+      return {topW: 52 * scale, botW: 168 * scale, height: 196 * scale, neckH: 48 * scale, stemH: 0, scale};
     case 'highball':
-      return {topW: 112 * scale, botW: 102 * scale, height: 238 * scale, neckH: 0, stemH: 0, scale};
+      return {topW: 110 * scale, botW: 98 * scale, height: 210 * scale, neckH: 0, stemH: 0, scale};
     case 'lotus':
-      return {topW: 194 * scale, botW: 96 * scale, height: 165 * scale, neckH: 0, stemH: 0, scale};
+      return {topW: 194 * scale, botW: 98 * scale, height: 156 * scale, neckH: 0, stemH: 0, scale};
     case 'chalice':
-      return {topW: 158 * scale, botW: 84 * scale, height: 150 * scale, neckH: 0, stemH: 58 * scale, scale};
+      return {topW: 156 * scale, botW: 84 * scale, height: 142 * scale, neckH: 0, stemH: 52 * scale, scale};
     case 'amphora':
-      return {topW: 64 * scale, botW: 156 * scale, height: 220 * scale, neckH: 48 * scale, stemH: 0, scale};
+      return {topW: 62 * scale, botW: 150 * scale, height: 198 * scale, neckH: 44 * scale, stemH: 0, scale};
     case 'tumbler':
     default:
-      return {topW: 152 * scale, botW: 120 * scale, height: 210 * scale, neckH: 0, stemH: 0, scale};
+      /* Matches Gameplay Mockup Wide Rounded Crystal Mixing Bowl */
+      return {topW: 212 * scale, botW: 112 * scale, height: 178 * scale, neckH: 0, stemH: 0, scale};
   }
 }
 
@@ -73,18 +125,25 @@ export function traceVesselInterior(
   const halfBot = m.botW / 2;
   const topY = -m.height / 2 - (m.stemH ? m.stemH * 0.35 : 0);
   const botY = m.height / 2 - (m.stemH ? m.stemH * 0.35 : 0);
-  const cornerR = 18 * m.scale;
+  const cornerR = 20 * m.scale;
 
   ctx.beginPath();
   if (vesselId === 'flask') {
     const shoulderY = topY + m.neckH;
     ctx.moveTo(-halfTop, topY);
     ctx.lineTo(-halfTop, shoulderY);
-    ctx.quadraticCurveTo(-halfBot * 1.08, shoulderY + 34 * m.scale, -halfBot, botY - cornerR);
+    ctx.quadraticCurveTo(-halfBot * 1.08, shoulderY + 32 * m.scale, -halfBot, botY - cornerR);
     ctx.quadraticCurveTo(-halfBot, botY, -halfBot + cornerR, botY);
     ctx.lineTo(halfBot - cornerR, botY);
     ctx.quadraticCurveTo(halfBot, botY, halfBot, botY - cornerR);
-    ctx.quadraticCurveTo(halfBot * 1.08, shoulderY + 34 * m.scale, halfTop, shoulderY);
+    ctx.quadraticCurveTo(halfBot * 1.08, shoulderY + 32 * m.scale, halfTop, shoulderY);
+    ctx.lineTo(halfTop, topY);
+  } else if (vesselId === 'highball') {
+    ctx.moveTo(-halfTop, topY);
+    ctx.lineTo(-halfBot, botY - cornerR);
+    ctx.quadraticCurveTo(-halfBot, botY, -halfBot + cornerR, botY);
+    ctx.lineTo(halfBot - cornerR, botY);
+    ctx.quadraticCurveTo(halfBot, botY, halfBot, botY - cornerR);
     ctx.lineTo(halfTop, topY);
   } else if (vesselId === 'lotus') {
     ctx.moveTo(-halfTop, topY);
@@ -115,30 +174,42 @@ export function traceVesselInterior(
     ctx.lineTo(-halfTop * 0.88, shoulderY);
     ctx.bezierCurveTo(
       -halfBot * 1.2,
-      shoulderY + 28 * m.scale,
+      shoulderY + 26 * m.scale,
       -halfBot * 1.05,
-      botY - 26 * m.scale,
+      botY - 24 * m.scale,
       -halfBot * 0.56,
       botY
     );
     ctx.lineTo(halfBot * 0.56, botY);
     ctx.bezierCurveTo(
       halfBot * 1.05,
-      botY - 26 * m.scale,
+      botY - 24 * m.scale,
       halfBot * 1.2,
-      shoulderY + 28 * m.scale,
+      shoulderY + 26 * m.scale,
       halfTop * 0.88,
       shoulderY
     );
     ctx.lineTo(halfTop * 1.15, topY);
   } else {
-    // Classic Tumbler & Tall Highball
+    /* Wide Rounded Crystal Mixing Bowl matching Gameplay Mockup */
     ctx.moveTo(-halfTop, topY);
-    ctx.lineTo(-halfBot, botY - cornerR);
-    ctx.quadraticCurveTo(-halfBot, botY, -halfBot + cornerR, botY);
-    ctx.lineTo(halfBot - cornerR, botY);
-    ctx.quadraticCurveTo(halfBot, botY, halfBot, botY - cornerR);
-    ctx.lineTo(halfTop, topY);
+    ctx.bezierCurveTo(
+      -halfTop * 1.04,
+      topY + m.height * 0.56,
+      -halfBot * 1.22,
+      botY,
+      -halfBot * 0.62,
+      botY
+    );
+    ctx.lineTo(halfBot * 0.62, botY);
+    ctx.bezierCurveTo(
+      halfBot * 1.22,
+      botY,
+      halfTop * 1.04,
+      topY + m.height * 0.56,
+      halfTop,
+      topY
+    );
   }
 }
 
@@ -146,12 +217,183 @@ export interface LiquidSceneState {
   vesselId: VesselId;
   palette: PaletteDef;
   drops: DyeCode[];
+  isLayered?: boolean;
+  bottomDrops?: DyeCode[];
+  topDrops?: DyeCode[];
+  overMix?: number;
   fallingDrops: FallingDrop[];
   pigmentClouds: PigmentCloud[];
   ripples: SurfaceRipple[];
   tiltAngle: number;
   swirlEnergy: number;
   wavePhase: number;
+  showPipes?: boolean;
+  pipePulses?: Record<PrimaryDyeCode, number>;
+  pipeRailOffset?: number;
+}
+
+function blendTwoRgb(
+  a: [number, number, number],
+  b: [number, number, number],
+  t: number
+): [number, number, number] {
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * t),
+    Math.round(a[1] + (b[1] - a[1]) * t),
+    Math.round(a[2] + (b[2] - a[2]) * t),
+  ];
+}
+
+/* Draws the 3 Vertical Glass Color Pipes (Blue, Yellow, Pink) on a smooth horizontal sliding rail */
+function drawColorPipes(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  palette: PaletteDef,
+  wavePhase: number,
+  pipePulses: Record<PrimaryDyeCode, number>,
+  railOffset = 0
+): void {
+  const pipes = getColorPipeLayout(width, height, railOffset);
+  const ink = '#174859';
+
+  // Subtle Metallic Overhead Sliding Rail Track beneath the HUD card
+  const railGrad = ctx.createLinearGradient(0, 0, 0, 10);
+  railGrad.addColorStop(0, '#133D4C');
+  railGrad.addColorStop(0.5, '#33768C');
+  railGrad.addColorStop(1, '#194D5E');
+  ctx.fillStyle = railGrad;
+  ctx.fillRect(0, 1, width, 7);
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(0, 8);
+  ctx.lineTo(width, 8);
+  ctx.stroke();
+
+  const cx = width / 2;
+
+  for (const pipe of pipes) {
+    const pulse = Math.max(0, Math.min(1, pipePulses[pipe.code] || 0));
+    const isCentered = Math.abs(pipe.x - cx) < 18;
+    const rgb = palette[pipe.code];
+    const fillCol = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+    const lightCol = `rgb(${Math.min(255, rgb[0] + 45)}, ${Math.min(255, rgb[1] + 45)}, ${Math.min(255, rgb[2] + 45)})`;
+    const darkCol = `rgb(${Math.max(0, rgb[0] - 28)}, ${Math.max(0, rgb[1] - 28)}, ${Math.max(0, rgb[2] - 28)})`;
+
+    const halfW = pipe.width / 2;
+    const bounceY = pulse * 3.5;
+
+    ctx.save();
+    ctx.translate(pipe.x, pipe.topY + bounceY);
+
+    // Subtle Active Halo beneath the Centered Pipe aligned over the Jar
+    if (isCentered) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.34)';
+      ctx.beginPath();
+      ctx.ellipse(0, pipe.height + 5, halfW + 10, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Subtle Drop Shadow below Bottom Pipe Rim
+    ctx.fillStyle = 'rgba(18, 72, 88, 0.2)';
+    ctx.beginPath();
+    ctx.ellipse(0, pipe.height + 6, halfW + 7, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Translucent Glass Cylinder Body
+    const tubeGrad = ctx.createLinearGradient(-halfW, 0, halfW, 0);
+    tubeGrad.addColorStop(0, 'rgba(176, 232, 252, 0.72)');
+    tubeGrad.addColorStop(0.28, 'rgba(246, 253, 255, 0.85)');
+    tubeGrad.addColorStop(0.7, 'rgba(184, 236, 255, 0.56)');
+    tubeGrad.addColorStop(1, 'rgba(130, 206, 236, 0.72)');
+
+    ctx.fillStyle = tubeGrad;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.rect(-halfW, 4, pipe.width, pipe.height - 6);
+    ctx.fill();
+    ctx.stroke();
+
+    // Liquid Column Inside Pipe (dips slightly during pulse!)
+    const liquidTop = pipe.height * (0.44 + pulse * 0.14);
+    const liquidBot = pipe.height - 4;
+    const liquidInnerW = pipe.width - 7;
+    const liqHalfW = liquidInnerW / 2;
+
+    const liqGrad = ctx.createLinearGradient(-liqHalfW, 0, liqHalfW, 0);
+    liqGrad.addColorStop(0, fillCol);
+    liqGrad.addColorStop(0.4, lightCol);
+    liqGrad.addColorStop(1, darkCol);
+
+    ctx.fillStyle = liqGrad;
+    ctx.beginPath();
+    ctx.roundRect(-liqHalfW, liquidTop, liquidInnerW, Math.max(10, liquidBot - liquidTop), 4);
+    ctx.fill();
+
+    // Liquid Meniscus Top Ellipse
+    ctx.fillStyle = lightCol;
+    ctx.beginPath();
+    ctx.ellipse(
+      0,
+      liquidTop + Math.sin(wavePhase * 1.4 + pipe.x) * 1.2,
+      liqHalfW,
+      4.5,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+
+    // Vertical Glass Gloss Reflection Strip
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+    ctx.beginPath();
+    ctx.roundRect(-halfW + 4.5, 10, 5.5, pipe.height - 20, 3);
+    ctx.fill();
+
+    // Top Dark-Teal Metallic Collar (anchored to HUD bottom)
+    const collarGrad = ctx.createLinearGradient(-halfW - 6, 0, halfW + 6, 0);
+    collarGrad.addColorStop(0, '#1B4F62');
+    collarGrad.addColorStop(0.35, '#4A8FA6');
+    collarGrad.addColorStop(0.75, '#256074');
+    collarGrad.addColorStop(1, '#143C4B');
+
+    ctx.fillStyle = collarGrad;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 2.3;
+    ctx.beginPath();
+    ctx.ellipse(0, 6, halfW + 6, 7.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Bottom Metallic Nozzle Collar
+    ctx.fillStyle = collarGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, pipe.height - 1, halfW + 6, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner bright ring on bottom collar
+    ctx.strokeStyle = 'rgba(204, 245, 255, 0.75)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.ellipse(0, pipe.height - 2.5, halfW + 2, 4.5, 0, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.stroke();
+
+    // Squeezing Droplet Glow at Nozzle when freshly triggered
+    if (pulse > 0.15) {
+      ctx.fillStyle = fillCol;
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, pipe.height + 5, 4.5 + pulse * 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
 }
 
 export function renderLiquidGlassScene(
@@ -178,54 +420,69 @@ export function renderLiquidGlassScene(
     }
   }
 
+  const showPipes = Boolean(scene.showPipes);
   const cx = width / 2;
-  const cy = height / 2 + 8;
-  const m = getVesselMetrics(scene.vesselId, width, height);
+  const cy = getVesselCenterY(height, showPipes);
+  const m = getVesselMetrics(scene.vesselId, width, height, showPipes);
   const topY = -m.height / 2 - (m.stemH ? m.stemH * 0.35 : 0);
   const botY = m.height / 2 - (m.stemH ? m.stemH * 0.35 : 0);
-  const baseShadowY = m.stemH ? botY + m.stemH + 8 : botY + 12;
+  const baseShadowY = m.stemH ? botY + m.stemH + 8 : botY + 8;
+  const ink = '#174859';
 
-  // Hard Comic Offset Shadow beneath Glass
+  // Soft Ground Shadow beneath Bowl/Glass on Meadow
   ctx.save();
   ctx.translate(cx, cy + baseShadowY);
-  ctx.fillStyle = 'rgba(20, 20, 20, 0.22)';
+  ctx.fillStyle = 'rgba(18, 92, 74, 0.34)';
   ctx.beginPath();
-  ctx.ellipse(0, 0, m.botW * 0.65, 11 * m.scale, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, m.topW * 0.52, 13 * m.scale, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // Falling Droplets (outside glass transform)
+  // Falling Droplets (drawn behind pipes so they visibly emerge out of pipe mouth!)
   for (const d of scene.fallingDrops) {
     ctx.save();
     ctx.fillStyle = `rgb(${d.rgb[0]}, ${d.rgb[1]}, ${d.rgb[2]})`;
-    ctx.strokeStyle = '#141414';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 2.4;
     ctx.beginPath();
-    ctx.moveTo(d.x, d.y - d.radius * 1.55);
+    ctx.moveTo(d.x, d.y - d.radius * 1.6);
     ctx.bezierCurveTo(
-      d.x + d.radius,
-      d.y - d.radius * 0.2,
-      d.x + d.radius,
+      d.x + d.radius * 1.05,
+      d.y - d.radius * 0.15,
+      d.x + d.radius * 1.05,
       d.y + d.radius,
       d.x,
       d.y + d.radius
     );
     ctx.bezierCurveTo(
-      d.x - d.radius,
+      d.x - d.radius * 1.05,
       d.y + d.radius,
-      d.x - d.radius,
-      d.y - d.radius * 0.2,
+      d.x - d.radius * 1.05,
+      d.y - d.radius * 0.15,
       d.x,
-      d.y - d.radius * 1.55
+      d.y - d.radius * 1.6
     );
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
     ctx.beginPath();
-    ctx.arc(d.x - 2.6, d.y + 1, 2.3, 0, Math.PI * 2);
+    ctx.arc(d.x - 2.6, d.y + 0.8, 2.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+  }
+
+  // Draw the 3 Glass Color Pipes on their sliding overhead rail
+  if (showPipes) {
+    drawColorPipes(
+      ctx,
+      width,
+      height,
+      scene.palette,
+      scene.wavePhase,
+      scene.pipePulses || {B: 0, Y: 0, R: 0},
+      scene.pipeRailOffset ?? 0
+    );
   }
 
   // Tilted Glass Coordinate Space
@@ -233,10 +490,10 @@ export function renderLiquidGlassScene(
   ctx.translate(cx, cy);
   ctx.rotate((scene.tiltAngle * Math.PI) / 180);
 
-  // Optional Decorative Handles for Royal Amphora (drawn behind vessel body)
+  // Decorative Handles for Royal Amphora
   if (scene.vesselId === 'amphora') {
     ctx.save();
-    ctx.strokeStyle = '#141414';
+    ctx.strokeStyle = ink;
     ctx.lineWidth = 9 * m.scale;
     ctx.lineCap = 'round';
     [-1, 1].forEach((dir) => {
@@ -251,27 +508,25 @@ export function renderLiquidGlassScene(
         topY + m.height * 0.56
       );
       ctx.stroke();
-      ctx.strokeStyle = '#FFE047';
+      ctx.strokeStyle = '#FFD347';
       ctx.lineWidth = 4.5 * m.scale;
       ctx.stroke();
-      ctx.strokeStyle = '#141414';
+      ctx.strokeStyle = ink;
       ctx.lineWidth = 9 * m.scale;
     });
     ctx.restore();
   }
 
-  // Optional Stem & Foot for Crystal Chalice
+  // Stem & Foot for Crystal Chalice
   if (scene.vesselId === 'chalice') {
     ctx.save();
-    ctx.fillStyle = '#FFFDF5';
-    ctx.strokeStyle = '#141414';
-    ctx.lineWidth = 3.5;
-    // Stem
+    ctx.fillStyle = '#E6FAFF';
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.roundRect(-7 * m.scale, botY - 4, 14 * m.scale, m.stemH, 4);
     ctx.fill();
     ctx.stroke();
-    // Base Foot
     ctx.beginPath();
     ctx.ellipse(0, botY + m.stemH - 2, m.botW * 0.54, 10 * m.scale, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -279,63 +534,151 @@ export function renderLiquidGlassScene(
     ctx.restore();
   }
 
-  // Back Glass Fill
+  // Translucent Sky-Tinted Back Glass Fill (Matches Gameplay Mockup Crystal Bowl)
   traceVesselInterior(ctx, scene.vesselId, m);
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.58)';
+  const backGlassGrad = ctx.createLinearGradient(-m.topW / 2, topY, m.topW / 2, botY);
+  backGlassGrad.addColorStop(0, 'rgba(210, 246, 255, 0.64)');
+  backGlassGrad.addColorStop(0.5, 'rgba(235, 252, 255, 0.48)');
+  backGlassGrad.addColorStop(1, 'rgba(176, 232, 252, 0.68)');
+  ctx.fillStyle = backGlassGrad;
   ctx.fill();
 
-  // Clip Interior for Liquid & Pigment Clouds
+  // Clip Interior for Liquid, Layered Waves, Bubbles & Pigment Clouds
   ctx.save();
   traceVesselInterior(ctx, scene.vesselId, m);
   ctx.clip();
 
-  const waterTopY = topY + m.height * (scene.vesselId === 'flask' || scene.vesselId === 'amphora' ? 0.36 : 0.28);
+  const waterTopY =
+    topY + m.height * (scene.vesselId === 'flask' || scene.vesselId === 'amphora' ? 0.38 : 0.34);
   const waterBotY = botY + 14;
-  const norm = dropsToNormalizedRYB(scene.drops);
-  const blendedRGB: [number, number, number] =
-    scene.drops.length > 0 ? rybToRgb(norm.r, norm.y, norm.b, scene.palette) : [214, 243, 255];
+  const midY = waterTopY + (botY - waterTopY) * 0.5;
+  const waveW = Math.max(m.topW, m.botW) * 1.45;
 
   // Counter-rotate water surface so liquid stays level when tilted
   ctx.save();
   ctx.rotate(((-scene.tiltAngle * Math.PI) / 180) * 0.72);
 
-  const baseMixAlpha = scene.drops.length === 0 ? 0.62 : 0.42 + scene.swirlEnergy * 0.55;
-  const liqGrad = ctx.createLinearGradient(0, waterTopY, 0, waterBotY);
-  liqGrad.addColorStop(
-    0,
-    `rgba(${blendedRGB[0]}, ${blendedRGB[1]}, ${blendedRGB[2]}, ${baseMixAlpha * 0.9})`
-  );
-  liqGrad.addColorStop(
-    1,
-    `rgba(${Math.max(0, blendedRGB[0] - 20)}, ${Math.max(0, blendedRGB[1] - 20)}, ${Math.max(
+  if (scene.isLayered) {
+    const bDrops = scene.bottomDrops || [];
+    const tDrops = scene.topDrops || [];
+    const rawBot = bDrops.length > 0 ? getRecipeRgb(bDrops, scene.palette) : [176, 234, 255];
+    const rawTop = tDrops.length > 0 ? getRecipeRgb(tDrops, scene.palette) : [204, 244, 255];
+    const mud = blendTwoRgb(rawBot as [number, number, number], rawTop as [number, number, number], 0.5);
+    const overMix = Math.max(0, Math.min(1, scene.overMix || 0));
+
+    const visBot = blendTwoRgb(rawBot as [number, number, number], mud, overMix * 0.85);
+    const visTop = blendTwoRgb(rawTop as [number, number, number], mud, overMix * 0.85);
+
+    const hasAny = bDrops.length > 0 || tDrops.length > 0;
+    const baseAlpha = !hasAny ? 0.56 : 0.76 + scene.swirlEnergy * 0.22;
+
+    const bandSpread = 0.06 + overMix * 0.36;
+    const liqGrad = ctx.createLinearGradient(0, waterTopY, 0, botY);
+    liqGrad.addColorStop(0, `rgba(${visTop[0]}, ${visTop[1]}, ${visTop[2]}, ${baseAlpha})`);
+    liqGrad.addColorStop(
+      Math.max(0.05, 0.5 - bandSpread),
+      `rgba(${visTop[0]}, ${visTop[1]}, ${visTop[2]}, ${Math.min(0.98, baseAlpha + 0.06)})`
+    );
+    liqGrad.addColorStop(
+      Math.min(0.95, 0.5 + bandSpread),
+      `rgba(${visBot[0]}, ${visBot[1]}, ${visBot[2]}, ${Math.min(0.98, baseAlpha + 0.08)})`
+    );
+    liqGrad.addColorStop(1, `rgba(${visBot[0]}, ${visBot[1]}, ${visBot[2]}, ${Math.min(0.99, baseAlpha + 0.12)})`);
+
+    ctx.fillStyle = liqGrad;
+    ctx.beginPath();
+    ctx.moveTo(-waveW, waterTopY);
+    for (let wx = -waveW; wx <= waveW; wx += 12) {
+      const wy =
+        waterTopY +
+        Math.sin(wx * 0.044 + scene.wavePhase) * (3.2 + Math.abs(scene.tiltAngle) * 0.14);
+      ctx.lineTo(wx, wy);
+    }
+    ctx.lineTo(waveW, waterBotY + 45);
+    ctx.lineTo(-waveW, waterBotY + 45);
+    ctx.closePath();
+    ctx.fill();
+
+    if (overMix < 0.75) {
+      ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - overMix) * 0.65})`;
+      ctx.lineWidth = 2.4;
+      ctx.setLineDash([7, 5]);
+      ctx.beginPath();
+      for (let wx = -waveW; wx <= waveW; wx += 14) {
+        const wy =
+          midY +
+          Math.sin(wx * 0.048 - scene.wavePhase * 0.85) * (3 + Math.abs(scene.tiltAngle) * 0.18);
+        if (wx === -waveW) ctx.moveTo(wx, wy);
+        else ctx.lineTo(wx, wy);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  } else {
+    const blendedRGB: [number, number, number] =
+      scene.drops.length > 0 ? getRecipeRgb(scene.drops, scene.palette) : [180, 236, 255];
+
+    const baseMixAlpha = scene.drops.length === 0 ? 0.52 : 0.72 + scene.swirlEnergy * 0.25;
+    const liqGrad = ctx.createLinearGradient(0, waterTopY, 0, waterBotY);
+    liqGrad.addColorStop(
       0,
-      blendedRGB[2] - 20
-    )}, ${Math.min(0.98, baseMixAlpha + 0.14)})`
-  );
+      `rgba(${Math.min(255, blendedRGB[0] + 18)}, ${Math.min(255, blendedRGB[1] + 18)}, ${Math.min(
+        255,
+        blendedRGB[2] + 18
+      )}, ${baseMixAlpha})`
+    );
+    liqGrad.addColorStop(
+      1,
+      `rgba(${Math.max(0, blendedRGB[0] - 24)}, ${Math.max(0, blendedRGB[1] - 24)}, ${Math.max(
+        0,
+        blendedRGB[2] - 24
+      )}, ${Math.min(0.98, baseMixAlpha + 0.14)})`
+    );
 
-  ctx.fillStyle = liqGrad;
-  ctx.beginPath();
-  const waveW = Math.max(m.topW, m.botW) * 1.4;
-  ctx.moveTo(-waveW, waterTopY);
-  for (let wx = -waveW; wx <= waveW; wx += 12) {
-    const wy =
-      waterTopY +
-      Math.sin(wx * 0.048 + scene.wavePhase) * (2.6 + Math.abs(scene.tiltAngle) * 0.13);
-    ctx.lineTo(wx, wy);
+    ctx.fillStyle = liqGrad;
+    ctx.beginPath();
+    ctx.moveTo(-waveW, waterTopY);
+    for (let wx = -waveW; wx <= waveW; wx += 12) {
+      const wy =
+        waterTopY +
+        Math.sin(wx * 0.044 + scene.wavePhase) * (3.2 + Math.abs(scene.tiltAngle) * 0.14);
+      ctx.lineTo(wx, wy);
+    }
+    ctx.lineTo(waveW, waterBotY + 45);
+    ctx.lineTo(-waveW, waterBotY + 45);
+    ctx.closePath();
+    ctx.fill();
+
+    // Subtle Layered Ribbon Bands while drops are actively swirling in (resembles mockup wavy bands!)
+    if (scene.drops.length >= 2 && scene.swirlEnergy < 0.92) {
+      const bandOpacity = Math.max(0, (1 - scene.swirlEnergy) * 0.65);
+      const uniqueDrops = scene.drops.slice(-3);
+      uniqueDrops.forEach((code, idx) => {
+        const cRgb = getRecipeRgb([code], scene.palette);
+        const bandY = waterTopY + ((idx + 0.7) / (uniqueDrops.length + 0.5)) * (botY - waterTopY);
+        ctx.fillStyle = `rgba(${cRgb[0]}, ${cRgb[1]}, ${cRgb[2]}, ${bandOpacity})`;
+        ctx.beginPath();
+        ctx.moveTo(-waveW, bandY);
+        for (let wx = -waveW; wx <= waveW; wx += 14) {
+          const wy = bandY + Math.sin(wx * 0.05 + scene.wavePhase + idx * 1.4) * 5.2;
+          ctx.lineTo(wx, wy);
+        }
+        ctx.lineTo(waveW, bandY + 24);
+        ctx.lineTo(-waveW, bandY + 24);
+        ctx.closePath();
+        ctx.fill();
+      });
+    }
   }
-  ctx.lineTo(waveW, waterBotY + 45);
-  ctx.lineTo(-waveW, waterBotY + 45);
-  ctx.closePath();
-  ctx.fill();
 
-  // Crisp Meniscus Surface Highlight
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.lineWidth = 3;
+  // Crisp Glossy Meniscus Surface Highlight Wave
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.82)';
+  ctx.lineWidth = 3.2;
   ctx.beginPath();
   for (let wx = -waveW; wx <= waveW; wx += 12) {
     const wy =
       waterTopY +
-      Math.sin(wx * 0.048 + scene.wavePhase) * (2.6 + Math.abs(scene.tiltAngle) * 0.13);
+      Math.sin(wx * 0.044 + scene.wavePhase) * (3.2 + Math.abs(scene.tiltAngle) * 0.14);
     if (wx === -waveW) ctx.moveTo(wx, wy);
     else ctx.lineTo(wx, wy);
   }
@@ -358,70 +701,93 @@ export function renderLiquidGlassScene(
     ctx.fill();
   }
 
+  // Sparkling Cartoon Air Bubbles inside Liquid (Matches Gameplay Mockup Bowl!)
+  const bubbleSeeds = [
+    {ox: -36, spd: 11, r: 4.2, ph: 0.4},
+    {ox: 28, spd: 14, r: 5.0, ph: 1.9},
+    {ox: -8, spd: 9, r: 3.6, ph: 3.1},
+    {ox: 46, spd: 12, r: 3.8, ph: 4.5},
+    {ox: -22, spd: 15, r: 4.6, ph: 5.4},
+  ];
+  const liqH = Math.max(30, botY - waterTopY);
+  for (const b of bubbleSeeds) {
+    const progress = ((scene.wavePhase * b.spd + b.ph * 25) % liqH) / liqH;
+    const bx = b.ox * m.scale + Math.sin(scene.wavePhase * 0.9 + b.ph) * 4;
+    const by = botY - 12 - progress * (liqH - 14);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.36)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(bx, by, b.r * m.scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
   // Impact Ripples
   for (const rip of scene.ripples) {
     ctx.strokeStyle = `rgba(255, 255, 255, ${rip.alpha})`;
-    ctx.lineWidth = 2.4;
+    ctx.lineWidth = 2.6;
     ctx.beginPath();
     ctx.ellipse(rip.x, waterTopY + 2, rip.radius, rip.radius * 0.25, 0, 0, Math.PI * 2);
     ctx.stroke();
   }
 
-  // Subtle Lotus Petal Engraving on Lotus Bowl
+  // Lotus Engraving
   if (scene.vesselId === 'lotus') {
-    ctx.strokeStyle = 'rgba(20, 20, 20, 0.18)';
+    ctx.strokeStyle = 'rgba(23, 72, 89, 0.22)';
     ctx.lineWidth = 2;
     [-36, 0, 36].forEach((ox) => {
       ctx.beginPath();
-      ctx.ellipse(ox * m.scale, botY - 34 * m.scale, 20 * m.scale, 34 * m.scale, ox * 0.008, 0, Math.PI * 2);
+      ctx.ellipse(
+        ox * m.scale,
+        botY - 34 * m.scale,
+        20 * m.scale,
+        34 * m.scale,
+        ox * 0.008,
+        0,
+        Math.PI * 2
+      );
       ctx.stroke();
     });
   }
 
   ctx.restore(); // End vessel clip
 
-  // Bold Comic Ink Outline around Glass
+  // Crisp Cartoon Dark-Teal Vector Outline around Glass
   traceVesselInterior(ctx, scene.vesselId, m);
-  ctx.strokeStyle = '#141414';
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 3.4;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.stroke();
 
-  // Glass Base Reflection (for flat-bottom vessels)
-  if (scene.vesselId !== 'chalice') {
-    const halfBot = m.botW / 2;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.62)';
-    ctx.beginPath();
-    ctx.roundRect(
-      -halfBot * 0.72,
-      botY - 12 * m.scale,
-      m.botW * 0.72,
-      8 * m.scale,
-      4
-    );
-    ctx.fill();
-  }
-
-  // Comic Gloss Highlight Streak
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.lineWidth = 5.5 * m.scale;
+  // Thick Glossy Left Specular Band (Matches Mockup Glass Reflection!)
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
+  ctx.lineWidth = 10 * m.scale;
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(-m.topW * 0.34, topY + m.height * 0.18);
-  ctx.lineTo(-m.botW * 0.3, botY - m.height * 0.2);
+  ctx.moveTo(-m.topW * 0.33, topY + m.height * 0.14);
+  ctx.quadraticCurveTo(-m.topW * 0.3, topY + m.height * 0.55, -m.botW * 0.32, botY - m.height * 0.16);
   ctx.stroke();
 
-  // Top Rim Comic Ellipse
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-  ctx.strokeStyle = '#141414';
-  ctx.lineWidth = 3.5;
+  // Subtle Right Specular Glint
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.lineWidth = 4.5 * m.scale;
+  ctx.beginPath();
+  ctx.moveTo(m.topW * 0.36, topY + m.height * 0.18);
+  ctx.quadraticCurveTo(m.topW * 0.34, topY + m.height * 0.52, m.botW * 0.38, botY - m.height * 0.22);
+  ctx.stroke();
+
+  // Top Rim Glass Ellipse
+  ctx.fillStyle = 'rgba(224, 250, 255, 0.65)';
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = 2.8;
   ctx.beginPath();
   ctx.ellipse(
     0,
     topY,
-    (scene.vesselId === 'amphora' ? m.topW * 0.58 : m.topW / 2),
-    6.5 * m.scale,
+    scene.vesselId === 'amphora' ? m.topW * 0.58 : m.topW / 2,
+    8.5 * m.scale,
     0,
     0,
     Math.PI * 2
@@ -429,145 +795,184 @@ export function renderLiquidGlassScene(
   ctx.fill();
   ctx.stroke();
 
+  // Inner bright glass rim sheen
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, topY + 1, m.topW * 0.44, 5 * m.scale, 0, 0.08 * Math.PI, 0.92 * Math.PI);
+  ctx.stroke();
+
   ctx.restore();
 }
 
-// Generates a downloadable Studio Polaroid PNG WITH the color HEX code & recipe burned in!
+// Generates a downloadable Studio Polaroid PNG WITH the color HEX code(s) & recipe burned in!
 export function generateSnapshotCardDataUrl(params: {
   vesselId: VesselId;
   palette: PaletteDef;
   drops: DyeCode[];
+  isLayered?: boolean;
+  bottomDrops?: DyeCode[];
+  topDrops?: DyeCode[];
+  overMix?: number;
   levelName: string;
   typeName: string;
   hexCode: string;
+  topHexCode?: string;
+  bottomHexCode?: string;
   matchPercent: number;
   recipeText: string;
   stageBg: string;
   accentColor: string;
 }): string {
   const w = 640;
-  const h = 780;
+  const h = 790;
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
-  // Outer Comic Cream Card
-  ctx.fillStyle = '#FFF9DF';
+  // Pastel Mint-Aqua Backdrop matching the world art style
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+  bgGrad.addColorStop(0, '#78E8D8');
+  bgGrad.addColorStop(0.55, '#C4FBF0');
+  bgGrad.addColorStop(1, '#92E8C8');
+  ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
-  // Subtle Halftone Dots
-  ctx.fillStyle = 'rgba(245, 184, 52, 0.26)';
-  for (let x = 14; x < w; x += 20) {
-    for (let y = 14; y < h; y += 20) {
-      ctx.beginPath();
-      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  // Thick Card Frame with Hard Offset Shadow
-  ctx.fillStyle = '#141414';
+  // Outer Card Frame (Soft Frosted Mint-Aqua instead of stark white)
+  const cardGrad = ctx.createLinearGradient(0, 28, 0, h - 28);
+  cardGrad.addColorStop(0, '#D8FDF6');
+  cardGrad.addColorStop(1, '#AEF3E4');
+  ctx.fillStyle = cardGrad;
+  ctx.strokeStyle = '#18495A';
+  ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.roundRect(38, 38, w - 64, h - 64, 28);
-  ctx.fill();
-
-  ctx.fillStyle = '#FFFFFF';
-  ctx.strokeStyle = '#141414';
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.roundRect(28, 28, w - 64, h - 64, 28);
+  ctx.roundRect(28, 28, w - 56, h - 56, 32);
   ctx.fill();
   ctx.stroke();
 
   // Header Row
-  ctx.fillStyle = '#141414';
-  ctx.font = '700 22px "Fredoka", sans-serif';
+  ctx.fillStyle = '#164454';
+  ctx.font = '700 24px "Fredoka", sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('DYE DROP STUDIO', 56, 76);
+  ctx.fillText('DYE DROP STUDIO', 56, 78);
 
-  // Match Badge
-  ctx.fillStyle = '#B8FF00';
-  ctx.strokeStyle = '#141414';
-  ctx.lineWidth = 4;
+  // Glossy Lime Match Pill
+  ctx.fillStyle = '#5DD928';
+  ctx.strokeStyle = '#175438';
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.roundRect(w - 220, 48, 162, 42, 21);
+  ctx.roundRect(w - 216, 46, 158, 44, 22);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = '#141414';
-  ctx.font = '700 20px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '700 19px "JetBrains Mono", monospace';
   ctx.textAlign = 'center';
-  ctx.fillText(`${params.matchPercent}% MATCH`, w - 139, 76);
+  ctx.fillText(`${params.matchPercent}% MATCH`, w - 137, 75);
 
-  // Inner Glass Stage Frame
-  const stageX = 54;
-  const stageY = 108;
-  const stageW = w - 116;
-  const stageH = 430;
+  // Inner Glass Stage Window
   ctx.save();
   ctx.beginPath();
-  ctx.roundRect(stageX, stageY, stageW, stageH, 22);
+  ctx.roundRect(52, 108, w - 104, 412, 24);
   ctx.clip();
 
-  ctx.translate(stageX, stageY);
-  renderLiquidGlassScene(
-    ctx,
-    stageW,
-    stageH,
-    {
-      vesselId: params.vesselId,
-      palette: params.palette,
-      drops: params.drops,
-      fallingDrops: [],
-      pigmentClouds: [],
-      ripples: [],
-      tiltAngle: 0,
-      swirlEnergy: 1,
-      wavePhase: 0.4,
-    },
-    {backdropColor: params.stageBg, halftoneColor: 'rgba(20, 20, 20, 0.06)'}
-  );
+  const stageGrad = ctx.createLinearGradient(0, 108, 0, 520);
+  stageGrad.addColorStop(0, '#A0F4E4');
+  stageGrad.addColorStop(0.68, '#D7FCF5');
+  stageGrad.addColorStop(1, '#68D99A');
+  ctx.fillStyle = stageGrad;
+  ctx.fillRect(52, 108, w - 104, 412);
+
+  ctx.translate(52, 108);
+  renderLiquidGlassScene(ctx, w - 104, 412, {
+    vesselId: params.vesselId,
+    palette: params.palette,
+    drops: params.drops,
+    isLayered: params.isLayered,
+    bottomDrops: params.bottomDrops,
+    topDrops: params.topDrops,
+    overMix: params.overMix ?? 0.08,
+    fallingDrops: [],
+    pigmentClouds: [],
+    ripples: [],
+    tiltAngle: 0,
+    swirlEnergy: 1,
+    wavePhase: 0.7,
+    showPipes: false,
+  });
   ctx.restore();
 
-  ctx.strokeStyle = '#141414';
-  ctx.lineWidth = 5;
+  // Stage Inner Frame Outline
+  ctx.strokeStyle = '#18495A';
+  ctx.lineWidth = 3.5;
   ctx.beginPath();
-  ctx.roundRect(stageX, stageY, stageW, stageH, 22);
+  ctx.roundRect(52, 108, w - 104, 412, 24);
   ctx.stroke();
 
-  // Color Swatch + Color Name + Recipe + Prominent HEX Code
-  const footerY = stageY + stageH + 30;
-  ctx.fillStyle = params.hexCode;
-  ctx.strokeStyle = '#141414';
-  ctx.lineWidth = 5;
+  // Bottom Color Swatch Bar + High-Contrast HEX Code
+  const barY = 548;
+  ctx.fillStyle = '#E0FBF6';
+  ctx.strokeStyle = '#18495A';
+  ctx.lineWidth = 3.5;
   ctx.beginPath();
-  ctx.roundRect(54, footerY, 92, 92, 18);
+  ctx.roundRect(52, barY, w - 104, 184, 24);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = '#141414';
+  // Swatch Tile
+  if (params.isLayered && params.topHexCode && params.bottomHexCode) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(76, barY + 26, 128, 128, 22);
+    ctx.clip();
+    ctx.fillStyle = params.topHexCode;
+    ctx.fillRect(76, barY + 26, 128, 64);
+    ctx.fillStyle = params.bottomHexCode;
+    ctx.fillRect(76, barY + 90, 128, 64);
+    ctx.restore();
+    ctx.strokeStyle = '#18495A';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.roundRect(76, barY + 26, 128, 128, 22);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = params.hexCode;
+    ctx.strokeStyle = '#18495A';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.roundRect(76, barY + 26, 128, 128, 22);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // Color Title & High-Contrast HEX Pill
   ctx.textAlign = 'left';
+  ctx.fillStyle = '#103D4D';
   ctx.font = '700 32px "Fredoka", sans-serif';
-  ctx.fillText(params.levelName, 164, footerY + 34);
+  ctx.fillText(params.levelName, 228, barY + 58);
 
-  ctx.fillStyle = '#524C5C';
+  if (params.isLayered && params.topHexCode && params.bottomHexCode) {
+    ctx.fillStyle = '#144353';
+    ctx.beginPath();
+    ctx.roundRect(228, barY + 72, 336, 40, 20);
+    ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '700 20px "JetBrains Mono", monospace';
+    ctx.fillText(`T:${params.topHexCode.toUpperCase()}  B:${params.bottomHexCode.toUpperCase()}`, 244, barY + 99);
+  } else {
+    ctx.fillStyle = '#144353';
+    ctx.beginPath();
+    ctx.roundRect(228, barY + 72, 188, 42, 21);
+    ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '700 26px "JetBrains Mono", monospace';
+    ctx.fillText(params.hexCode.toUpperCase(), 252, barY + 102);
+  }
+
+  ctx.fillStyle = '#1F5C6E';
   ctx.font = '700 18px "Plus Jakarta Sans", sans-serif';
-  ctx.fillText(`${params.typeName} Pack · ${params.recipeText}`, 164, footerY + 66);
-
-  // Prominent HEX Code Pill
-  ctx.fillStyle = '#FFE047';
-  ctx.strokeStyle = '#141414';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.roundRect(164, footerY + 84, 178, 44, 12);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = '#141414';
-  ctx.font = '700 24px "JetBrains Mono", monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(params.hexCode, 164 + 89, footerY + 114);
+  ctx.fillText(`${params.typeName} · ${params.recipeText}`, 228, barY + 148);
 
   return canvas.toDataURL('image/png');
 }

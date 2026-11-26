@@ -126,9 +126,17 @@ class DyeDropAudioEngine {
 
   public playDrop(dye: DyeCode = 'R', dropIndex = 0): void {
     if (!this.soundEnabled) return;
-    const base = dye === 'R' ? 390 : dye === 'Y' ? 465 : 340;
-    const offset = (dropIndex % 5) * 26;
-    this.playTone(base + offset, 'sine', 0.16, 0, 0.24, (base + offset) * 1.92);
+    const baseMap: Record<DyeCode, number> = {
+      R: 390,
+      Y: 465,
+      B: 340,
+      W: 520,
+      K: 255,
+      D: 590,
+    };
+    const base = baseMap[dye] ?? 390;
+    const offset = (dropIndex % 5) * 24;
+    this.playTone(base + offset, 'sine', 0.16, 0, 0.24, (base + offset) * 1.9);
   }
 
   public playSwirl(intensity = 0.6): void {

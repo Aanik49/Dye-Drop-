@@ -1,11 +1,13 @@
 import {useCallback, useEffect, useState} from 'react';
 import {ChapterUnlockModal} from './components/ChapterUnlockModal';
 import {DailyStreakModal} from './components/DailyStreakModal';
+import {DailyTasksModal} from './components/DailyTasksModal';
 import {GameplayScreen, type GameplayResultPayload} from './components/GameplayScreen';
 import {LevelFailedModal} from './components/LevelFailedModal';
 import {LevelListDrawer} from './components/LevelListDrawer';
 import {LevelSuccessModal} from './components/LevelSuccessModal';
 import {LobbyScreen} from './components/LobbyScreen';
+import {RecipeBookModal} from './components/RecipeBookModal';
 import {SplashScreen} from './components/SplashScreen';
 import {StudioModal} from './components/StudioModal';
 import {audio} from './game/audio';
@@ -20,12 +22,20 @@ import {
 import {
   claimDailyLoginReward,
   claimDailyTask,
+  claimRecipeBookBonus,
   incrementDailyTaskProgress,
   loadSavedState,
   persistState,
   recordLevelCompletion,
 } from './game/storage';
-import type {LevelTypeId, PaletteId, SavedGameState, ScreenMode, VesselId} from './game/types';
+import type {
+  LevelTypeId,
+  PaletteId,
+  RecipeBookEntry,
+  SavedGameState,
+  ScreenMode,
+  VesselId,
+} from './game/types';
 import {usePWAInstall} from './hooks/usePWAInstall';
 
 interface ActiveSuccessState {
@@ -42,7 +52,9 @@ export default function App() {
 
   // Modals & overlays
   const [showStreakModal, setShowStreakModal] = useState(false);
+  const [showDailyTasksModal, setShowDailyTasksModal] = useState(false);
   const [studioModalTab, setStudioModalTab] = useState<'vessels' | 'palettes' | null>(null);
+  const [showRecipeBook, setShowRecipeBook] = useState(false);
   const [successState, setSuccessState] = useState<ActiveSuccessState | null>(null);
   const [failedState, setFailedState] = useState<GameplayResultPayload | null>(null);
   const [showLevelListDrawer, setShowLevelListDrawer] = useState(false);
@@ -103,18 +115,10 @@ export default function App() {
     }));
   };
 
-  const handleSelectLevel = (levelNumber: number) => {
-    audio.playClick();
-    setGameState((prev) => ({
-      ...prev,
-      selectedLevelNumber: levelNumber,
-    }));
-  };
-
   const handleLockedTap = (typeId: LevelTypeId) => {
     audio.playLocked();
     const idx = LEVEL_TYPE_ORDER.indexOf(typeId);
-    const prevType = idx > 0 ? LEVEL_TYPES[LEVEL_TYPE_ORDER[idx - 1]].name : 'Crimson';
+    const prevType = idx > 0 ? LEVEL_TYPES[LEVEL_TYPE_ORDER[idx - 1]].name : 'Classic';
     showToast(`Complete all 10 ${prevType} levels to unlock ${LEVEL_TYPES[typeId].name}!`);
   };
 
@@ -146,6 +150,15 @@ export default function App() {
       audio.playBuy();
       setGameState(nextState);
       showToast(`Daily Task Complete: +${awarded} Diamonds!`);
+    }
+  };
+
+  const handleClaimRecipeBookBonus = (typeId: LevelTypeId) => {
+    const {nextState, awarded} = claimRecipeBookBonus(gameState, typeId);
+    if (awarded > 0) {
+      audio.playChapterUnlock();
+      setGameState(nextState);
+      showToast(`${LEVEL_TYPES[typeId].name} Recipe Book Complete! +${awarded} Diamonds!`);
     }
   };
 
@@ -211,11 +224,32 @@ export default function App() {
       }
 
       const lvl = getLevelDef(gameState.selectedType, gameState.selectedLevelNumber);
+      const bookEntry: RecipeBookEntry = {
+        levelId: lvl.id,
+        typeId: gameState.selectedType,
+        levelNumber: lvl.number,
+        levelName: lvl.name,
+        isLayered: result.isLayered,
+        hexCode: result.hexCode,
+        topHexCode: result.topHexCode,
+        bottomHexCode: result.bottomHexCode,
+        recipeText: result.recipeText,
+        drops: result.dropsUsed,
+        bottomDrops: result.bottomDropsUsed,
+        topDrops: result.topDropsUsed,
+        stars: result.stars,
+        matchPercent: result.matchPercent,
+        vesselId: gameState.equippedVessel,
+        paletteId: gameState.equippedPalette,
+        solvedAt: new Date().toISOString(),
+      };
+
       const outcome = recordLevelCompletion(
         gameState,
         gameState.selectedType,
         lvl.id,
-        result.stars
+        result.stars,
+        bookEntry
       );
       setGameState(outcome.nextState);
       setSuccessState({
@@ -232,19 +266,33 @@ export default function App() {
   const handleSaveSnapshot = () => {
     if (!successState?.result.snapshotDataUrl) return;
     const lvl = getLevelDef(gameState.selectedType, gameState.selectedLevelNumber);
+    const res = successState.result;
+    const hexTag =
+      res.isLayered && res.topHexCode && res.bottomHexCode
+        ? `${res.topHexCode.replace('#', '')}-${res.bottomHexCode.replace('#', '')}`
+        : res.hexCode.replace('#', '');
     const link = document.createElement('a');
-    link.download = `dye-drop-${lvl.name.toLowerCase().replace(/\s+/g, '-')}-${successState.result.hexCode.replace('#', '')}.png`;
-    link.href = successState.result.snapshotDataUrl;
+    link.download = `dye-drop-${lvl.name.toLowerCase().replace(/\s+/g, '-')}-${hexTag}.png`;
+    link.href = res.snapshotDataUrl;
     link.click();
     audio.playClick();
     setGameState((prev) => incrementDailyTaskProgress(prev, 'save_snapshot', 1));
-    showToast(`Snapshot saved with code ${successState.result.hexCode}!`);
+    showToast(
+      res.isLayered && res.topHexCode && res.bottomHexCode
+        ? `Snapshot saved (${res.topHexCode} / ${res.bottomHexCode})!`
+        : `Snapshot saved with code ${res.hexCode}!`
+    );
   };
 
   const handleCopyRecipe = () => {
     if (!successState) return;
     const lvl = getLevelDef(gameState.selectedType, gameState.selectedLevelNumber);
-    const text = `Dye Drop — ${lvl.name} (${successState.result.hexCode}) | Recipe: ${successState.result.recipeText}`;
+    const res = successState.result;
+    const hexPart =
+      res.isLayered && res.topHexCode && res.bottomHexCode
+        ? `Top ${res.topHexCode} / Bottom ${res.bottomHexCode}`
+        : res.hexCode;
+    const text = `Dye Drop — ${lvl.name} (${hexPart}) | Recipe: ${res.recipeText}`;
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(text).catch(() => {});
     } else {
@@ -326,16 +374,27 @@ export default function App() {
   const currentLevel = getLevelDef(gameState.selectedType, gameState.selectedLevelNumber);
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-[#181620] sm:p-3 overflow-hidden">
-      {/* Responsive Mobile Game Shell (Full-bleed on mobile phones, crisp portrait frame on tablets/desktops) */}
-      <main className="relative w-full h-full sm:max-w-[436px] sm:max-h-[900px] sm:rounded-[38px] sm:border-[5px] sm:border-[#141414] sm:shadow-[0_28px_70px_rgba(0,0,0,0.65)] overflow-hidden flex flex-col">
+    <div className="w-full h-full flex items-center justify-center bg-[#0E3B3A] sm:p-3 overflow-hidden">
+      {/* Responsive Mobile Game Shell (Full-bleed on phones, sleek portrait frame on desktop) */}
+      <main className="relative w-full h-full sm:max-w-[436px] sm:max-h-[900px] sm:rounded-[38px] sm:border-[5px] sm:border-[#78E6D6]/35 sm:shadow-[0_28px_72px_rgba(4,28,30,0.68)] overflow-hidden flex flex-col">
         {screen === 'splash' && <SplashScreen onComplete={handleEnterFromSplash} />}
 
         {screen === 'lobby' && (
           <LobbyScreen
             gameState={gameState}
             onSelectType={handleSelectType}
-            onSelectLevel={handleSelectLevel}
+            onOpenLevels={(typeId?: LevelTypeId) => {
+              audio.playClick();
+              if (typeId) {
+                setGameState((prev) => ({
+                  ...prev,
+                  selectedType: typeId,
+                  selectedLevelNumber:
+                    prev.selectedType === typeId ? prev.selectedLevelNumber : 1,
+                }));
+              }
+              setShowLevelListDrawer(true);
+            }}
             onPlay={handlePlayFromLobby}
             onToggleSound={handleToggleSound}
             onToggleMusic={handleToggleMusic}
@@ -343,11 +402,18 @@ export default function App() {
               audio.playClick();
               setShowStreakModal(true);
             }}
+            onOpenDailyTasks={() => {
+              audio.playClick();
+              setShowDailyTasksModal(true);
+            }}
             onOpenStudio={(tab = 'vessels') => {
               audio.playClick();
               setStudioModalTab(tab);
             }}
-            onClaimTask={handleClaimDailyTask}
+            onOpenRecipeBook={() => {
+              audio.playClick();
+              setShowRecipeBook(true);
+            }}
             onLockedTap={handleLockedTap}
             canInstallPWA={isInstallable}
             onInstallPWA={() => {
@@ -369,6 +435,9 @@ export default function App() {
               setFailedState(null);
               setShowLevelListDrawer(false);
               setScreen('lobby');
+            }}
+            onOpenLevels={() => {
+              setShowLevelListDrawer(true);
             }}
             onChangeLevel={(num) => {
               audio.playClick();
@@ -397,6 +466,19 @@ export default function App() {
           />
         )}
 
+        {/* Daily Tasks Panel (opened via Daily Task icon button in Lobby) */}
+        {showDailyTasksModal && (
+          <DailyTasksModal
+            gameState={gameState}
+            accentColor={activeTheme.panelCoral}
+            onClaimTask={handleClaimDailyTask}
+            onClose={() => {
+              audio.playClick();
+              setShowDailyTasksModal(false);
+            }}
+          />
+        )}
+
         {/* Studio Collection Modal (Vessels & Pigment Palettes shop in Lobby) */}
         {studioModalTab && (
           <StudioModal
@@ -412,6 +494,24 @@ export default function App() {
           />
         )}
 
+        {/* Color Recipe Book Gallery Modal */}
+        {showRecipeBook && (
+          <RecipeBookModal
+            gameState={gameState}
+            initialType={gameState.selectedType}
+            onClaimPackBonus={handleClaimRecipeBookBonus}
+            onSnapshotDownloaded={(hexLabel) => {
+              setGameState((prev) => incrementDailyTaskProgress(prev, 'save_snapshot', 1));
+              showToast(`Saved Polaroid (${hexLabel})!`);
+            }}
+            onToast={showToast}
+            onClose={() => {
+              audio.playClick();
+              setShowRecipeBook(false);
+            }}
+          />
+        )}
+
         {/* Level Success Celebration Modal (07. Color Vial / Gem Crystallize) */}
         {successState && (
           <LevelSuccessModal
@@ -421,6 +521,9 @@ export default function App() {
             stars={successState.result.stars}
             matchPercent={successState.result.matchPercent}
             hexCode={successState.result.hexCode}
+            isLayered={successState.result.isLayered}
+            topHexCode={successState.result.topHexCode}
+            bottomHexCode={successState.result.bottomHexCode}
             recipeText={successState.result.recipeText}
             diamondsDelta={successState.diamondsDelta}
             wasStarUpgrade={successState.wasStarUpgrade}
@@ -447,6 +550,12 @@ export default function App() {
             levelName={currentLevel.name}
             targetHex={failedState.targetHex}
             mixedHex={failedState.hexCode}
+            isLayered={failedState.isLayered}
+            targetTopHex={failedState.targetTopHex}
+            targetBottomHex={failedState.targetBottomHex}
+            mixedTopHex={failedState.topHexCode}
+            mixedBottomHex={failedState.bottomHexCode}
+            overMixedFail={failedState.overMixedFail}
             matchPercent={failedState.matchPercent}
             hint={currentLevel.hint}
             onRetry={() => {
@@ -467,7 +576,7 @@ export default function App() {
           />
         )}
 
-        {/* In-Game Level List Drawer (opened via Levels button in Level Failed panel) */}
+        {/* In-Game / Lobby Level List Drawer */}
         {showLevelListDrawer && (
           <LevelListDrawer
             gameState={gameState}
@@ -478,6 +587,9 @@ export default function App() {
               setShowLevelListDrawer(false);
               setGameState((prev) => ({...prev, selectedLevelNumber: lvlNum}));
               setGameplayResetCounter((c) => c + 1);
+              if (screen === 'lobby') {
+                setScreen('gameplay');
+              }
             }}
             onGoToLobby={() => {
               audio.playClick();
@@ -487,7 +599,6 @@ export default function App() {
             onClose={() => {
               audio.playClick();
               setShowLevelListDrawer(false);
-              setGameplayResetCounter((c) => c + 1);
             }}
           />
         )}
@@ -501,9 +612,9 @@ export default function App() {
           />
         )}
 
-        {/* Comic Floating Toast */}
+        {/* Cartoon Pastel Floating Toast */}
         {toastMsg && (
-          <div className="pointer-events-none absolute top-14 left-1/2 -translate-x-1/2 z-[70] max-w-[90%] bg-[#141414] text-[#FFE047] px-4 py-2 rounded-2xl border-[2.5px] border-[#FFE047] shadow-[3px_3px_0_#141414] text-xs font-extrabold text-center animate-pop-in">
+          <div className="pointer-events-none absolute top-14 left-1/2 -translate-x-1/2 z-[70] max-w-[90%] bg-[#144D5A] text-white px-4 py-2 rounded-full border-2 border-[#7CEAD9] shadow-[0_10px_24px_rgba(9,44,50,0.4)] text-xs font-bold text-center animate-pop-in">
             {toastMsg}
           </div>
         )}

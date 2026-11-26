@@ -2,9 +2,10 @@
 
 @layer base {
   :root {
-    --ink: #141414;
-    --cream: #fff8dc;
-    --font-display: 'Fredoka', 'Plus Jakarta Sans', system-ui, sans-serif;
+    --ink: #164454;
+    --ink-soft: #437180;
+    --surface: #f5fffd;
+    --font-display: 'Fredoka', system-ui, sans-serif;
     --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   }
@@ -26,7 +27,7 @@
     overflow: hidden;
     font-family: var(--font-body);
     color: var(--ink);
-    background-color: #1c1a22;
+    background-color: #0e3b3a;
   }
 }
 
@@ -39,120 +40,323 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Comic Pop-Art Halftone Dot Background */
-.comic-halftone {
-  background-image:
-    radial-gradient(circle at 12% 10%, var(--dot-color, rgba(255, 184, 77, 0.42)) 2.4px, transparent 2.6px),
-    radial-gradient(circle at 88% 88%, var(--dot-color, rgba(255, 184, 77, 0.36)) 2.4px, transparent 2.6px);
-  background-size: 16px 16px;
+/* Hide horizontal scrollbar cleanly on mobile scroll rows */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-.comic-halftone-edge {
-  background-image: radial-gradient(var(--dot-color, rgba(244, 179, 66, 0.34)) 2.2px, transparent 2.4px);
-  background-size: 13px 13px;
+/* ================================================================
+   PASTEL CARTOON VECTOR-INK DESIGN SYSTEM (100% Mockup Matched)
+   ================================================================ */
+
+/* Glossy White HUD Card (Gameplay Target / Stars / Moves bar) */
+.pastel-hud-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f1fbfa 100%);
+  border: 2.5px solid #18495a;
+  box-shadow:
+    0 5px 0 rgba(19, 72, 88, 0.24),
+    inset 0 -3px 0 #d5ecef,
+    inset 0 2px 0 #ffffff;
 }
 
-/* Signature Comic Pop-Art Borders & Hard Offset Shadows */
-.comic-box {
-  border: 3px solid #141414;
-  box-shadow: 4px 4px 0px #141414;
+/* Glossy Sky-Blue Capsule Banner (Level 4 / Moves Pill) */
+.pastel-blue-pill {
+  position: relative;
+  background: linear-gradient(180deg, #98e4ff 0%, #58c6fa 100%);
+  border: 2.5px solid #18495a;
+  box-shadow:
+    0 4px 0 rgba(18, 73, 90, 0.28),
+    inset 0 -3px 0 #319bd9,
+    inset 0 3px 0 rgba(255, 255, 255, 0.72);
 }
 
-.comic-box-sm {
-  border: 2.5px solid #141414;
-  box-shadow: 3px 3px 0px #141414;
+/* Glossy Emerald Green Primary Play Button (Lobby Play CTA) */
+.pastel-play-btn {
+  position: relative;
+  background: linear-gradient(180deg, #47e480 0%, #20c462 62%, #17b056 100%);
+  border: 3px solid #125c42;
+  box-shadow:
+    0 6px 0 #0e523a,
+    0 12px 24px rgba(8, 56, 44, 0.34),
+    inset 0 -5px 0 #139448,
+    inset 0 3px 0 rgba(255, 255, 255, 0.56);
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease;
 }
 
-.comic-box-lg {
-  border: 3.5px solid #141414;
-  box-shadow: 5px 5px 0px #141414;
+.pastel-play-btn:active:not(:disabled) {
+  transform: translateY(3px) scale(0.985);
+  box-shadow:
+    0 3px 0 #0e523a,
+    0 6px 12px rgba(8, 56, 44, 0.28),
+    inset 0 -2px 0 #139448;
 }
 
-.comic-btn {
-  border: 3px solid #141414;
-  box-shadow: 0px 4px 0px #141414;
+/* Glossy Lime Green Action Pill (Gameplay Reset / Confirm CTAs) */
+.pastel-lime-btn {
+  position: relative;
+  background: linear-gradient(180deg, #a7fb54 0%, #6ce32d 62%, #52cc1e 100%);
+  border: 2.5px solid #175438;
+  box-shadow:
+    0 5px 0 #144d32,
+    0 8px 16px rgba(10, 56, 42, 0.25),
+    inset 0 -4px 0 #3ead14,
+    inset 0 3px 0 rgba(255, 255, 255, 0.62);
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease;
+}
+
+.pastel-lime-btn:active:not(:disabled) {
+  transform: translateY(3px) scale(0.98);
+  box-shadow:
+    0 2px 0 #144d32,
+    inset 0 -2px 0 #3ead14;
+}
+
+/* Glossy Ice-Silver Pill Button (Gameplay Undo / Secondary Actions) */
+.pastel-silver-btn {
+  position: relative;
+  background: linear-gradient(180deg, #f3f8fc 0%, #d4e3ee 100%);
+  border: 2.5px solid #1a4b5c;
+  box-shadow:
+    0 5px 0 #1a4b5c,
+    0 8px 16px rgba(12, 54, 66, 0.2),
+    inset 0 -4px 0 #b0c6d8,
+    inset 0 3px 0 rgba(255, 255, 255, 0.85);
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease;
+}
+
+.pastel-silver-btn:active:not(:disabled) {
+  transform: translateY(3px) scale(0.98);
+  box-shadow:
+    0 2px 0 #1a4b5c,
+    inset 0 -2px 0 #b0c6d8;
+}
+
+/* Glossy Sunny-Yellow Icon Button (Gameplay Sound / Music) */
+.pastel-yellow-btn {
+  position: relative;
+  background: linear-gradient(180deg, #fff078 0%, #ffd02e 65%, #f5b814 100%);
+  border: 2.5px solid #18495a;
+  box-shadow:
+    0 4px 0 #18495a,
+    inset 0 -3px 0 #d99508,
+    inset 0 2.5px 0 rgba(255, 255, 255, 0.72);
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease;
+}
+
+.pastel-yellow-btn:active:not(:disabled) {
+  transform: translateY(2px) scale(0.95);
+  box-shadow:
+    0 2px 0 #18495a,
+    inset 0 -1.5px 0 #d99508;
+}
+
+/* Creamy-White Square Icon Button (Gameplay Pause ||) */
+.pastel-white-sq-btn {
+  position: relative;
+  background: linear-gradient(180deg, #fffef8 0%, #edf3ec 100%);
+  border: 2.5px solid #18495a;
+  box-shadow:
+    0 4px 0 #18495a,
+    inset 0 -3px 0 #cdd9d3,
+    inset 0 2px 0 #ffffff;
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease;
+}
+
+.pastel-white-sq-btn:active:not(:disabled) {
+  transform: translateY(2px) scale(0.95);
+  box-shadow:
+    0 2px 0 #18495a,
+    inset 0 -1.5px 0 #cdd9d3;
+}
+
+/* Dark Teal Lobby Top Bar Pill & Circular Audio Buttons */
+.pastel-teal-pill {
+  background: rgba(20, 88, 84, 0.84);
+  border: 1.5px solid rgba(154, 245, 232, 0.24);
+  box-shadow:
+    0 4px 10px rgba(10, 56, 56, 0.24),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.18);
+}
+
+.pastel-teal-circle {
+  background: rgba(24, 96, 92, 0.86);
+  border: 1.5px solid rgba(154, 245, 232, 0.22);
+  box-shadow:
+    0 4px 10px rgba(10, 56, 56, 0.25),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.18);
+  transition: transform 0.14s ease;
+}
+
+.pastel-teal-circle:active {
+  transform: scale(0.92);
+}
+
+/* Gameplay Color Dropper Card (Blue / Yellow / Pink white square buttons) */
+.pastel-color-card {
+  position: relative;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f8fb 100%);
+  border: 2.5px solid #18495a;
+  box-shadow:
+    0 5px 0 rgba(16, 62, 74, 0.42),
+    0 8px 16px rgba(8, 48, 54, 0.2),
+    inset 0 -4px 0 #d4e4ee,
+    inset 0 2.5px 0 #ffffff;
   transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.12s ease;
 }
 
-.comic-btn:active:not(:disabled) {
-  transform: translateY(3px);
-  box-shadow: 0px 1px 0px #141414;
+.pastel-color-card:active:not(:disabled) {
+  transform: translateY(3px) scale(0.96);
+  box-shadow:
+    0 2px 0 rgba(16, 62, 74, 0.42),
+    inset 0 -2px 0 #d4e4ee;
 }
 
-.comic-btn:disabled {
-  opacity: 0.52;
+/* Lobby Level Type Squircle Card (Classic / Blend / Triple / Layers / Rush / Color Grid) */
+.pastel-type-card {
+  position: relative;
+  background: linear-gradient(180deg, #ffffff 0%, #ebf7f8 100%);
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 4px 0 #8eb8c2,
+    0 7px 14px rgba(10, 52, 50, 0.28),
+    inset 0 -3px 0 #d1e7ec,
+    inset 0 2px 0 #ffffff;
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease;
+}
+
+.pastel-type-card:active:not(:disabled) {
+  transform: translateY(2px) scale(0.96);
+}
+
+/* Lobby Wide Bottom Cards (Studio / Recipe Book) */
+.pastel-wide-card {
+  position: relative;
+  background: linear-gradient(180deg, #f8fcff 0%, #e1effa 100%);
+  border: 2px solid rgba(255, 255, 255, 0.94);
+  box-shadow:
+    0 5px 0 #8eaec9,
+    0 10px 20px rgba(10, 52, 52, 0.32),
+    inset 0 -4px 0 #c6dcf0,
+    inset 0 2.5px 0 #ffffff;
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease;
+}
+
+.pastel-wide-card:active:not(:disabled) {
+  transform: translateY(3px) scale(0.98);
+}
+
+/* Glossy Coral/Berry Action Pill (Buy / Retry CTAs — high contrast against cyan diamond) */
+.pastel-coral-btn {
+  position: relative;
+  background: linear-gradient(180deg, #ff709a 0%, #ea3c72 100%);
+  border: 2.5px solid #6b1536;
+  box-shadow:
+    0 5px 0 #6b1536,
+    inset 0 -4px 0 #c12456,
+    inset 0 2.5px 0 rgba(255, 255, 255, 0.5);
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s ease;
+}
+
+.pastel-coral-btn:active:not(:disabled) {
+  transform: translateY(3px) scale(0.98);
+  box-shadow: 0 2px 0 #6b1536;
+}
+
+/* Unified Pastel Cartoon Modal Shell — Rich Mint-Aqua Scenic Pattern & Soft Pine-Hill Shade */
+.pastel-modal {
+  background-color: #9ff2e2;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 220' preserveAspectRatio='none'%3E%3Cpath d='M0 148L52 96L104 148L158 84L222 146L294 92L356 144L400 108V220H0Z' fill='%2343C59B' fill-opacity='0.22'/%3E%3Cpath d='M0 172Q100 142 200 166T400 154V220H0Z' fill='%2329A87E' fill-opacity='0.20'/%3E%3Cpath d='M0 192Q120 170 245 188T400 178V220H0Z' fill='%231C8D6B' fill-opacity='0.18'/%3E%3Ccircle cx='58' cy='42' r='16' fill='%23FFFFFF' fill-opacity='0.24'/%3E%3Ccircle cx='336' cy='54' r='22' fill='%23FFFFFF' fill-opacity='0.20'/%3E%3Ccircle cx='198' cy='28' r='10' fill='%23FFFFFF' fill-opacity='0.22'/%3E%3C/svg%3E"),
+    radial-gradient(circle at 12px 12px, rgba(255, 255, 255, 0.36) 2px, transparent 2.4px),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, transparent 45%, rgba(36, 178, 152, 0.14) 100%),
+    linear-gradient(180deg, #cffcf3 0%, #aaf4e5 48%, #7be6cc 100%);
+  background-size: 100% 210px, 24px 24px, 100% 100%, 100% 100%;
+  background-position: bottom center, 0 0, 0 0, 0 0;
+  background-repeat: no-repeat, repeat, no-repeat, no-repeat;
+  border: 3px solid #18495a;
+  box-shadow:
+    0 18px 46px rgba(9, 44, 52, 0.48),
+    inset 0 -4px 0 rgba(22, 104, 92, 0.28),
+    inset 0 2px 0 rgba(255, 255, 255, 0.72);
+}
+
+/* Inner Frosted Mint-Aqua Card popping cleanly above the scenic modal backdrop (no stark white) */
+.pastel-subcard {
+  background: linear-gradient(180deg, rgba(226, 253, 248, 0.92) 0%, rgba(188, 244, 234, 0.88) 100%);
+  border: 2px solid #2b7d8c;
+  box-shadow:
+    0 4px 0 rgba(16, 72, 84, 0.24),
+    inset 0 -2.5px 0 rgba(78, 178, 168, 0.34),
+    inset 0 2px 0 rgba(255, 255, 255, 0.72);
+}
+
+/* Sleek Pastel Teal Scrollbar for Studio & Recipe Book lists */
+.pastel-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.pastel-scroll::-webkit-scrollbar-track {
+  background: rgba(24, 73, 90, 0.08);
+  border-radius: 999px;
+}
+.pastel-scroll::-webkit-scrollbar-thumb {
+  background: rgba(24, 73, 90, 0.34);
+  border-radius: 999px;
+}
+.pastel-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(24, 73, 90, 0.52);
+}
+
+/* Level Tile inside Level Picker Drawer */
+.pastel-level-tile {
+  border: 2.5px solid #18495a;
+  box-shadow:
+    0 4px 0 rgba(24, 73, 90, 0.35),
+    inset 0 2.5px 0 rgba(255, 255, 255, 0.38),
+    inset 0 -3px 0 rgba(16, 46, 58, 0.2);
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pastel-level-tile:active:not(:disabled) {
+  transform: translateY(2px) scale(0.95);
+}
+
+/* Disabled State */
+.pastel-play-btn:disabled,
+.pastel-lime-btn:disabled,
+.pastel-silver-btn:disabled,
+.pastel-coral-btn:disabled,
+.pastel-color-card:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.comic-text-stroke {
-  -webkit-text-stroke: 2px #141414;
-  paint-order: stroke fill;
-  text-shadow: 2px 2px 0px #141414;
+/* Crisp Outlined Text Shadows */
+.cartoon-text-shadow {
+  text-shadow:
+    0 2px 0 rgba(15, 62, 74, 0.55),
+    0 1px 3px rgba(15, 62, 74, 0.35);
 }
 
-.comic-text-stroke-lg {
-  -webkit-text-stroke: 3.5px #141414;
-  paint-order: stroke fill;
-  text-shadow: 3px 3px 0px #141414;
-}
-
-/* Custom Comic Tilt Slider */
-input[type='range'].comic-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-input[type='range'].comic-slider::-webkit-slider-runnable-track {
-  height: 12px;
-  border-radius: 999px;
-  background: #fffdf5;
-  border: 2.5px solid #141414;
-}
-
-input[type='range'].comic-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #ffe047;
-  border: 3px solid #141414;
-  box-shadow: 0 3px 0 #141414;
-  margin-top: -10.5px;
-  transition: transform 0.1s ease;
-}
-
-input[type='range'].comic-slider:active::-webkit-slider-thumb {
-  transform: scale(1.12);
-}
-
-input[type='range'].comic-slider::-moz-range-track {
-  height: 12px;
-  border-radius: 999px;
-  background: #fffdf5;
-  border: 2.5px solid #141414;
-}
-
-input[type='range'].comic-slider::-moz-range-thumb {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #ffe047;
-  border: 3px solid #141414;
-  box-shadow: 0 3px 0 #141414;
+/* Recessed Mint Progress Track */
+.pastel-track {
+  background-color: #d7eff0;
+  border: 2px solid #18495a;
+  box-shadow: inset 0 2px 3px rgba(20, 74, 88, 0.16);
 }
 
 /* Smooth Compositor-Only Pop Animations */
 @keyframes popIn {
   0% {
     opacity: 0;
-    transform: scale(0.86) translateY(14px);
+    transform: scale(0.92) translateY(10px);
   }
   70% {
     opacity: 1;
-    transform: scale(1.03) translateY(-2px);
+    transform: scale(1.015) translateY(-1px);
   }
   100% {
     opacity: 1;
@@ -161,7 +365,7 @@ input[type='range'].comic-slider::-moz-range-thumb {
 }
 
 .animate-pop-in {
-  animation: popIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: popIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes floatSlow {
@@ -170,12 +374,12 @@ input[type='range'].comic-slider::-moz-range-thumb {
     transform: translateY(0px);
   }
   50% {
-    transform: translateY(-6px);
+    transform: translateY(-5px);
   }
 }
 
 .animate-float-slow {
-  animation: floatSlow 2.6s ease-in-out infinite;
+  animation: floatSlow 2.8s ease-in-out infinite;
 }
 
 @keyframes sparkleSpin {
@@ -184,12 +388,12 @@ input[type='range'].comic-slider::-moz-range-thumb {
     transform: scale(1) rotate(0deg);
   }
   50% {
-    transform: scale(1.14) rotate(8deg);
+    transform: scale(1.12) rotate(8deg);
   }
 }
 
 .animate-sparkle {
-  animation: sparkleSpin 2.2s ease-in-out infinite;
+  animation: sparkleSpin 2.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
