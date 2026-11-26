@@ -187,12 +187,12 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
             <LobbyHeroFlask className="w-[122px] h-[132px] sm:w-[140px] sm:h-[150px]" />
           </button>
 
-          {/* Right Floating Daily Task Button — Transparent Container, Green Icon Border, Green Text Pill Only */}
+          {/* Right Floating Daily Task Button — Playfully Tilted like Daily Login, Green Icon Border & Green Text Pill */}
           <button
             type="button"
             onClick={onOpenDailyTasks}
             aria-label="Daily Tasks"
-            className="relative flex flex-col items-center justify-center bg-transparent cursor-pointer active:scale-95 transition-transform shrink-0"
+            className="relative rotate-6 hover:rotate-0 flex flex-col items-center justify-center bg-transparent cursor-pointer active:scale-95 transition-transform shrink-0"
           >
             <div className="relative">
               <DailyTaskClipboardIcon className="w-[54px] h-[60px] sm:w-[60px] sm:h-[66px] drop-shadow-[0_5px_10px_rgba(10,56,48,0.28)]" />
@@ -267,7 +267,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
               onPointerMove={handleStripPointerMove}
               onPointerUp={handleStripPointerUp}
               onPointerLeave={handleStripPointerUp}
-              className="flex-1 min-w-0 flex items-stretch gap-2 overflow-x-auto no-scrollbar snap-x snap-mandatory touch-pan-x pb-1.5 pt-1 px-0.5 cursor-grab active:cursor-grabbing"
+              className="flex-1 min-w-0 flex items-stretch gap-2 overflow-x-auto no-scrollbar snap-x snap-mandatory touch-pan-x pt-3 pb-2.5 px-1.5 cursor-grab active:cursor-grabbing"
             >
               {LEVEL_TYPE_ORDER.map((typeId) => {
                 const t = LEVEL_TYPES[typeId];
@@ -301,7 +301,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
                     }`}
                   >
                     {isSelected && unlocked && (
-                      <span className="absolute -top-1.5 -right-1 w-4.5 h-4.5 rounded-full bg-[#24CE6B] border-2 border-white flex items-center justify-center shadow-xs">
+                      <span className="absolute -top-2 -right-1.5 w-5 h-5 rounded-full bg-[#24CE6B] border-2 border-white flex items-center justify-center shadow-xs z-10">
                         <Check className="w-2.5 h-2.5 text-white stroke-[3.5]" />
                       </span>
                     )}

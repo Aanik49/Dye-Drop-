@@ -345,13 +345,13 @@ export const DailyLoginCardIcon: React.FC<{className?: string}> = ({className = 
     <rect x="19" y="5" width="6" height="12" rx="3" fill="#FFFDF5" stroke="#18495A" strokeWidth="2" />
     <rect x="49" y="5" width="6" height="12" rx="3" fill="#FFFDF5" stroke="#18495A" strokeWidth="2" />
     {/* Green Check Circle */}
-    <circle cx="37" cy="40" r="11" fill="#2AD175" />
-    <path d="M32 40L35.5 43.5L42.5 36.5" stroke="#FFFFFF" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
-    {/* Label inside card */}
-    <text x="37" y="59" textAnchor="middle" fill="#164454" fontSize="10" fontWeight="800" fontFamily="Fredoka, sans-serif">
+    <circle cx="37" cy="37" r="9.5" fill="#2AD175" />
+    <path d="M32.5 37L35.7 40.2L42 33.8" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    {/* Centered Label inside card */}
+    <text x="37" y="54.5" textAnchor="middle" fill="#164454" fontSize="10" fontWeight="800" fontFamily="Fredoka, sans-serif">
       Daily
     </text>
-    <text x="37" y="67.5" textAnchor="middle" fill="#164454" fontSize="9.5" fontWeight="800" fontFamily="Fredoka, sans-serif">
+    <text x="37" y="63.5" textAnchor="middle" fill="#164454" fontSize="9.5" fontWeight="800" fontFamily="Fredoka, sans-serif">
       Login
     </text>
   </svg>

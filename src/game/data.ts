@@ -9,7 +9,7 @@ import type {
   VesselId,
 } from './types';
 
-export const APP_ICON_URL = '/src/assets/images/dye_drop_app_icon_1795363014968.jpg';
+export const APP_ICON_URL = '/pwa-192x192.png';
 
 export const DAILY_LOGIN_REWARDS = [5, 10, 15, 20, 25, 30, 50] as const;
 
