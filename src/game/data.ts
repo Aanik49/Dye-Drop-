@@ -1,10 +1,15 @@
 import type {
+  BackgroundThemeDef,
+  BackgroundThemeId,
   DailyTask,
   LevelDef,
   LevelTypeId,
   LevelTypeTheme,
+  LiquidFinishDef,
+  LiquidFinishId,
   PaletteDef,
   PaletteId,
+  RushShadeTarget,
   VesselDef,
   VesselId,
 } from './types';
@@ -529,12 +534,148 @@ export const VESSELS: VesselDef[] = [
   },
 ];
 
+export const LIQUID_FINISHES: LiquidFinishDef[] = [
+  {
+    id: 'classic',
+    name: 'Crystal Clear',
+    desc: 'Sunlit studio water with gentle bubbles',
+    price: 0,
+    accentColor: '#48C9FA',
+  },
+  {
+    id: 'pearlescent',
+    name: 'Pearlescent Shimmer',
+    desc: 'Silky iridescent light ribbons & pearl sheen',
+    price: 90,
+    accentColor: '#E59BFF',
+  },
+  {
+    id: 'star_confetti',
+    name: 'Star Confetti',
+    desc: 'Floating pastel star glitters swirling in dye',
+    price: 120,
+    accentColor: '#FFD13B',
+  },
+  {
+    id: 'boba_pearls',
+    name: 'Boba Pearls',
+    desc: 'Glossy tapioca pearls rolling with every tilt',
+    price: 140,
+    accentColor: '#8B5A3C',
+  },
+  {
+    id: 'aurora_bubbles',
+    name: 'Aurora Bubbles',
+    desc: 'Glowing holographic bubbles & northern shimmer',
+    price: 180,
+    accentColor: '#4CEFB8',
+  },
+];
+
+export const BACKGROUND_THEMES: BackgroundThemeDef[] = [
+  {
+    id: 'mint_meadow',
+    name: 'Mint Meadow',
+    desc: 'Pastel turquoise lake & sunlit pine valley',
+    price: 0,
+    skyTop: '#65E5D6',
+    skyBottom: '#C8FBF1',
+    hillColor: '#26917B',
+  },
+  {
+    id: 'cherry_blossom',
+    name: 'Cherry Blossom Meadow',
+    desc: 'Soft sakura skies & drifting spring petals',
+    price: 120,
+    skyTop: '#FFB7D5',
+    skyBottom: '#FFF0F6',
+    hillColor: '#D96B9B',
+  },
+  {
+    id: 'sunset_beach',
+    name: 'Sunset Beach',
+    desc: 'Golden coral twilight & swaying ocean palms',
+    price: 150,
+    skyTop: '#FF866B',
+    skyBottom: '#FFE09E',
+    hillColor: '#D97C4A',
+  },
+  {
+    id: 'starry_forest',
+    name: 'Starry Night Forest',
+    desc: 'Twinkling crescent skies & glowing fireflies',
+    price: 180,
+    skyTop: '#16285A',
+    skyBottom: '#2B5B84',
+    hillColor: '#16394D',
+    isNight: true,
+  },
+];
+
+export const RUSH_SHADE_POOL: RushShadeTarget[] = [
+  // Tier 1: Fast 1–2 drop warm-ups
+  {id: 'rush-ruby', name: 'Pure Ruby', recipe: ['R'], maxDrops: 2, tier: 1},
+  {id: 'rush-sun', name: 'Sunburst', recipe: ['Y'], maxDrops: 2, tier: 1},
+  {id: 'rush-sky', name: 'Sky Splash', recipe: ['B'], maxDrops: 2, tier: 1},
+  {id: 'rush-tangerine', name: 'Tangerine', recipe: ['R', 'Y'], maxDrops: 3, tier: 1},
+  {id: 'rush-mint', name: 'Mint Leaf', recipe: ['Y', 'B'], maxDrops: 3, tier: 1},
+  {id: 'rush-berry', name: 'Royal Berry', recipe: ['R', 'B'], maxDrops: 3, tier: 1},
+
+  // Tier 2: Crisp 3-drop ratios
+  {id: 'rush-coral', name: 'Coral Peach', recipe: ['R', 'R', 'Y'], maxDrops: 4, tier: 2},
+  {id: 'rush-amber', name: 'Golden Mango', recipe: ['R', 'Y', 'Y'], maxDrops: 4, tier: 2},
+  {id: 'rush-lime', name: 'Lime Zest', recipe: ['Y', 'Y', 'B'], maxDrops: 4, tier: 2},
+  {id: 'rush-teal', name: 'Lagoon Teal', recipe: ['Y', 'B', 'B'], maxDrops: 4, tier: 2},
+  {id: 'rush-magenta', name: 'Orchid Fizz', recipe: ['R', 'R', 'B'], maxDrops: 4, tier: 2},
+  {id: 'rush-indigo', name: 'Violet Dusk', recipe: ['R', 'B', 'B'], maxDrops: 4, tier: 2},
+  {id: 'rush-cocoa', name: 'Warm Mocha', recipe: ['R', 'Y', 'B'], maxDrops: 4, tier: 2},
+
+  // Tier 3: Pro 4-drop alchemist blends
+  {id: 'rush-flame', name: 'Flame Poppy', recipe: ['R', 'R', 'R', 'Y'], maxDrops: 5, tier: 3},
+  {id: 'rush-honey', name: 'Honey Marigold', recipe: ['R', 'Y', 'Y', 'Y'], maxDrops: 5, tier: 3},
+  {id: 'rush-pistachio', name: 'Spring Kiwi', recipe: ['Y', 'Y', 'Y', 'B'], maxDrops: 5, tier: 3},
+  {id: 'rush-cerulean', name: 'Ocean Surge', recipe: ['Y', 'B', 'B', 'B'], maxDrops: 5, tier: 3},
+  {id: 'rush-plum', name: 'Mulberry Pop', recipe: ['R', 'R', 'R', 'B'], maxDrops: 5, tier: 3},
+  {id: 'rush-cobalt', name: 'Twilight Iris', recipe: ['R', 'B', 'B', 'B'], maxDrops: 5, tier: 3},
+  {id: 'rush-terracotta', name: 'Terracotta', recipe: ['R', 'R', 'Y', 'B'], maxDrops: 5, tier: 3},
+  {id: 'rush-olive', name: 'Olive Grove', recipe: ['R', 'Y', 'Y', 'B'], maxDrops: 5, tier: 3},
+  {id: 'rush-slate', name: 'Stormy Slate', recipe: ['R', 'Y', 'B', 'B'], maxDrops: 5, tier: 3},
+];
+
+export function pickNextRushTarget(roundIndex: number, excludeId?: string): RushShadeTarget {
+  const allowedMaxTier: 1 | 2 | 3 = roundIndex < 2 ? 1 : roundIndex < 5 ? 2 : 3;
+  const preferredMinTier: 1 | 2 | 3 = roundIndex < 2 ? 1 : roundIndex < 6 ? 1 : 2;
+  const candidates = RUSH_SHADE_POOL.filter(
+    (t) => t.tier <= allowedMaxTier && t.tier >= preferredMinTier && t.id !== excludeId
+  );
+  const pool = candidates.length > 0 ? candidates : RUSH_SHADE_POOL.filter((t) => t.id !== excludeId);
+  return pool[Math.floor(Math.random() * pool.length)] || RUSH_SHADE_POOL[0];
+}
+
+export function getRushMultiplier(streak: number): number {
+  if (streak >= 8) return 5;
+  if (streak >= 6) return 4;
+  if (streak >= 5) return 3;
+  if (streak >= 4) return 2.5;
+  if (streak >= 3) return 2;
+  if (streak >= 2) return 1.5;
+  return 1;
+}
+
 export function getPaletteById(id: PaletteId): PaletteDef {
   return PALETTES.find((p) => p.id === id) || PALETTES[0];
 }
 
 export function getVesselById(id: VesselId): VesselDef {
   return VESSELS.find((v) => v.id === id) || VESSELS[0];
+}
+
+export function getLiquidFinishById(id: LiquidFinishId): LiquidFinishDef {
+  return LIQUID_FINISHES.find((f) => f.id === id) || LIQUID_FINISHES[0];
+}
+
+export function getBackgroundThemeById(id: BackgroundThemeId): BackgroundThemeDef {
+  return BACKGROUND_THEMES.find((t) => t.id === id) || BACKGROUND_THEMES[0];
 }
 
 export function getLevelDef(typeId: LevelTypeId, levelNumber: number): LevelDef {

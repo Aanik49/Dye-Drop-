@@ -8,10 +8,13 @@ import {
   getTodayDateString,
 } from './data';
 import type {
+  BackgroundThemeId,
   DailyTaskKind,
   LevelTypeId,
+  LiquidFinishId,
   PaletteId,
   RecipeBookEntry,
+  RushRunSummary,
   SavedGameState,
   VesselId,
 } from './types';
@@ -30,6 +33,13 @@ export function createInitialState(): SavedGameState {
     equippedVessel: 'tumbler',
     ownedPalettes: ['watercolor'], // Pigment 1 default unlocked & selected
     equippedPalette: 'watercolor',
+    ownedFinishes: ['classic'],
+    equippedFinish: 'classic',
+    ownedThemes: ['mint_meadow'],
+    equippedTheme: 'mint_meadow',
+    rushBestScore: 0,
+    rushBestStreak: 0,
+    rushBestMatches: 0,
     streakDay: 1,
     lastLoginClaimDate: null,
     dailyTasksDate: today,
@@ -79,6 +89,19 @@ export function loadSavedState(): SavedGameState {
         Array.isArray(parsed.ownedPalettes) && parsed.ownedPalettes.length > 0
           ? (parsed.ownedPalettes as PaletteId[])
           : ['watercolor'],
+      ownedFinishes:
+        Array.isArray(parsed.ownedFinishes) && parsed.ownedFinishes.length > 0
+          ? (parsed.ownedFinishes as LiquidFinishId[])
+          : ['classic'],
+      equippedFinish: (parsed.equippedFinish as LiquidFinishId) || 'classic',
+      ownedThemes:
+        Array.isArray(parsed.ownedThemes) && parsed.ownedThemes.length > 0
+          ? (parsed.ownedThemes as BackgroundThemeId[])
+          : ['mint_meadow'],
+      equippedTheme: (parsed.equippedTheme as BackgroundThemeId) || 'mint_meadow',
+      rushBestScore: typeof parsed.rushBestScore === 'number' ? parsed.rushBestScore : 0,
+      rushBestStreak: typeof parsed.rushBestStreak === 'number' ? parsed.rushBestStreak : 0,
+      rushBestMatches: typeof parsed.rushBestMatches === 'number' ? parsed.rushBestMatches : 0,
       recipeBook: parsed.recipeBook && typeof parsed.recipeBook === 'object' ? parsed.recipeBook : {},
       claimedBookBonuses: Array.isArray(parsed.claimedBookBonuses)
         ? (parsed.claimedBookBonuses.filter((t): t is LevelTypeId =>
@@ -318,5 +341,35 @@ export function recordLevelCompletion(
     wasStarUpgrade,
     newlyUnlockedType,
     completedAllOfCurrentType,
+  };
+}
+
+export function recordRushResult(
+  state: SavedGameState,
+  summary: RushRunSummary
+): {
+  nextState: SavedGameState;
+  diamondsEarned: number;
+  isNewBestScore: boolean;
+  isNewBestStreak: boolean;
+} {
+  const isNewBestScore = summary.score > state.rushBestScore && summary.score > 0;
+  const isNewBestStreak = summary.bestStreak > state.rushBestStreak && summary.bestStreak > 0;
+  const streakBonuses = Math.floor(summary.bestStreak / 3) * 5;
+  const diamondsEarned = Math.min(45, summary.matches * 2 + streakBonuses);
+
+  const nextState: SavedGameState = {
+    ...state,
+    diamonds: state.diamonds + diamondsEarned,
+    rushBestScore: Math.max(state.rushBestScore, summary.score),
+    rushBestStreak: Math.max(state.rushBestStreak, summary.bestStreak),
+    rushBestMatches: Math.max(state.rushBestMatches, summary.matches),
+  };
+
+  return {
+    nextState,
+    diamondsEarned,
+    isNewBestScore,
+    isNewBestStreak,
   };
 }

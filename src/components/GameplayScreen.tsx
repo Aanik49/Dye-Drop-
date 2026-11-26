@@ -459,6 +459,7 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
             ? generateSnapshotCardDataUrl({
                 vesselId: gameState.equippedVessel,
                 palette,
+                liquidFinish: gameState.equippedFinish,
                 drops: allDrops,
                 isLayered: true,
                 bottomDrops: sim.bottomDrops,
@@ -508,6 +509,7 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
           ? generateSnapshotCardDataUrl({
               vesselId: gameState.equippedVessel,
               palette,
+              liquidFinish: gameState.equippedFinish,
               drops: sim.drops,
               levelName: level.name,
               typeName: theme.name,
@@ -538,6 +540,7 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
     }, 145);
   }, [
     applySwirlImpulse,
+    gameState.equippedFinish,
     gameState.equippedVessel,
     isLayered,
     isSwirlingCheck,
@@ -846,6 +849,7 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
       renderLiquidGlassScene(ctx, sim.canvasW, sim.canvasH, {
         vesselId: gameState.equippedVessel,
         palette,
+        liquidFinish: gameState.equippedFinish,
         drops: sim.drops,
         isLayered,
         bottomDrops: sim.bottomDrops,
@@ -903,6 +907,7 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
     };
   }, [
     applySwirlImpulse,
+    gameState.equippedFinish,
     gameState.equippedVessel,
     isLayered,
     palette,
@@ -996,8 +1001,8 @@ export const GameplayScreen: React.FC<GameplayScreenProps> = ({
 
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden select-none">
-      {/* Full-bleed Pastel Mint Mountain-Lake Gameplay Scenery */}
-      <PastelNatureBackdrop variant="gameplay" />
+      {/* Full-bleed Equipped Scenic Studio Backdrop */}
+      <PastelNatureBackdrop variant="gameplay" themeId={gameState.equippedTheme} />
 
       {/* 1. TOP HEADER ROW: Pause (||) | Sky-Blue Level Banner | Sunny-Yellow Sound & Music */}
       <header className="relative z-20 px-3 pt-2.5 pb-1.5 flex items-center justify-between gap-2 shrink-0">

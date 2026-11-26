@@ -104,6 +104,7 @@ export const RecipeBookModal: React.FC<RecipeBookModalProps> = ({
     const dataUrl = generateSnapshotCardDataUrl({
       vesselId: entry.vesselId,
       palette: entryPalette,
+      liquidFinish: entry.finishId || gameState.equippedFinish,
       drops: entry.drops,
       isLayered: entry.isLayered,
       bottomDrops: entry.bottomDrops,

@@ -220,6 +220,27 @@ class DyeDropAudioEngine {
     });
   }
 
+  public playTick(urgent = false): void {
+    this.playTone(urgent ? 940 : 680, 'triangle', 0.055, 0, urgent ? 0.13 : 0.08, urgent ? 1120 : 620);
+  }
+
+  public playComboMatch(streak: number): void {
+    const semitones = Math.min(12, Math.max(0, streak - 1));
+    const root = 523.25 * Math.pow(2, semitones / 12);
+    this.playTone(root, 'triangle', 0.18, 0, 0.16);
+    this.playTone(root * 1.25, 'triangle', 0.22, 0.055, 0.15);
+    if (streak >= 2) {
+      this.playTone(root * 1.5, 'sine', 0.26, 0.11, 0.13);
+    }
+  }
+
+  public playTimeUp(): void {
+    const notes = [783.99, 659.25, 587.33, 523.25];
+    notes.forEach((f, idx) => {
+      this.playTone(f, 'triangle', 0.26, idx * 0.08, 0.14);
+    });
+  }
+
   private startMusicLoop(): void {
     if (!this.musicEnabled) return;
     const el = this.ensureBgMusic();

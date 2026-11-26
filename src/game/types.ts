@@ -8,7 +8,22 @@ export type VesselId = 'tumbler' | 'flask' | 'highball' | 'lotus' | 'chalice' | 
 
 export type PaletteId = 'watercolor' | 'pastel' | 'neon' | 'royal';
 
-export type ScreenMode = 'splash' | 'lobby' | 'gameplay';
+export type LiquidFinishId =
+  | 'classic'
+  | 'pearlescent'
+  | 'star_confetti'
+  | 'boba_pearls'
+  | 'aurora_bubbles';
+
+export type BackgroundThemeId =
+  | 'mint_meadow'
+  | 'cherry_blossom'
+  | 'sunset_beach'
+  | 'starry_forest';
+
+export type StudioTabId = 'vessels' | 'palettes' | 'finishes' | 'themes';
+
+export type ScreenMode = 'splash' | 'lobby' | 'gameplay' | 'rush';
 
 export type LayerSlot = 'bottom' | 'top';
 
@@ -68,6 +83,42 @@ export interface VesselDef {
   price: number; // 0 for default
 }
 
+export interface LiquidFinishDef {
+  id: LiquidFinishId;
+  name: string;
+  desc: string;
+  price: number; // 0 for default
+  accentColor: string;
+}
+
+export interface BackgroundThemeDef {
+  id: BackgroundThemeId;
+  name: string;
+  desc: string;
+  price: number; // 0 for default
+  skyTop: string;
+  skyBottom: string;
+  hillColor: string;
+  isNight?: boolean;
+}
+
+export interface RushShadeTarget {
+  id: string;
+  name: string;
+  recipe: PrimaryDyeCode[];
+  maxDrops: number;
+  tier: 1 | 2 | 3;
+}
+
+export interface RushRunSummary {
+  score: number;
+  matches: number;
+  perfectMatches: number;
+  bestStreak: number;
+  peakMultiplier: number;
+  undosUsed: number;
+}
+
 export type DailyTaskKind =
   | 'complete_levels'
   | 'perfect_blends'
@@ -110,6 +161,7 @@ export interface RecipeBookEntry {
   matchPercent: number;
   vesselId: VesselId;
   paletteId: PaletteId;
+  finishId?: LiquidFinishId;
   solvedAt: string;
 }
 
@@ -123,6 +175,13 @@ export interface SavedGameState {
   equippedVessel: VesselId;
   ownedPalettes: PaletteId[];
   equippedPalette: PaletteId;
+  ownedFinishes: LiquidFinishId[];
+  equippedFinish: LiquidFinishId;
+  ownedThemes: BackgroundThemeId[];
+  equippedTheme: BackgroundThemeId;
+  rushBestScore: number;
+  rushBestStreak: number;
+  rushBestMatches: number;
   streakDay: number; // 1..7
   lastLoginClaimDate: string | null; // YYYY-MM-DD
   dailyTasksDate: string; // YYYY-MM-DD

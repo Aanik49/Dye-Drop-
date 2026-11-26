@@ -1,12 +1,12 @@
 import React, {useRef} from 'react';
-import {Check, ChevronLeft, ChevronRight, Download, Lock, Play, Plus} from 'lucide-react';
+import {Check, ChevronLeft, ChevronRight, Download, Lock, Play, Plus, Timer} from 'lucide-react';
 import {LEVEL_TYPES, LEVEL_TYPE_ORDER} from '../game/data';
 import {
   canClaimDailyLogin,
   countRecipeBookPackEntries,
   hasClaimableRecipeBookBonus,
 } from '../game/storage';
-import type {LevelTypeId, SavedGameState} from '../game/types';
+import type {LevelTypeId, SavedGameState, StudioTabId} from '../game/types';
 import {
   DailyLoginCardIcon,
   DailyTaskClipboardIcon,
@@ -26,11 +26,12 @@ interface LobbyScreenProps {
   onSelectType: (typeId: LevelTypeId) => void;
   onOpenLevels: (typeId?: LevelTypeId) => void;
   onPlay: () => void;
+  onPlayRush: () => void;
   onToggleSound: () => void;
   onToggleMusic: () => void;
   onOpenStreak: () => void;
   onOpenDailyTasks: () => void;
-  onOpenStudio: (tab?: 'vessels' | 'palettes') => void;
+  onOpenStudio: (tab?: StudioTabId) => void;
   onOpenRecipeBook: () => void;
   onLockedTap: (typeId: LevelTypeId) => void;
   canInstallPWA?: boolean;
@@ -42,6 +43,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   onSelectType,
   onOpenLevels,
   onPlay,
+  onPlayRush,
   onToggleSound,
   onToggleMusic,
   onOpenStreak,
@@ -53,6 +55,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   onInstallPWA,
 }) => {
   const isTypeUnlocked = gameState.unlockedTypes.includes(gameState.selectedType);
+  const isNightTheme = gameState.equippedTheme === 'starry_forest';
   const hasBookBonus = hasClaimableRecipeBookBonus(gameState);
   const hasClaimableTask = gameState.dailyTasks.some(
     (task) => !task.claimed && task.progress >= task.target
@@ -100,8 +103,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
 
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden select-none">
-      {/* Full-bleed Illustrated Pastel Mountain-Lake Scenery */}
-      <PastelNatureBackdrop variant="lobby" />
+      {/* Full-bleed Illustrated Scenic Studio Backdrop */}
+      <PastelNatureBackdrop variant="lobby" themeId={gameState.equippedTheme} />
 
       {/* Main Lobby Content (No vertical scroll; ONLY the Level Types strip swipes left/right) */}
       <div className="relative z-10 flex-1 min-h-0 flex flex-col justify-between px-3 pt-2.5 pb-2.5 overflow-hidden">
@@ -155,7 +158,11 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
         {/* 2. HERO STACKED "Dye Drop" LOGO + TAGLINE */}
         <div className="flex flex-col items-center justify-center -mt-1 shrink-0">
           <DyeDropHeroLogo className="w-[214px] h-[106px] sm:w-[240px] sm:h-[118px] drop-shadow-[0_6px_10px_rgba(12,68,78,0.2)]" />
-          <p className="font-display font-bold text-xs sm:text-[13px] tracking-wide text-[#134D59] -mt-1">
+          <p
+            className={`font-display font-bold text-xs sm:text-[13px] tracking-wide -mt-1 ${
+              isNightTheme ? 'text-[#D8F6FF]' : 'text-[#134D59]'
+            }`}
+          >
             Mix · Match · Complete
           </p>
         </div>
@@ -208,13 +215,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           </button>
         </div>
 
-        {/* 4. PRIMARY GLOSSY EMERALD "Play" BUTTON WITH ANIMATED YELLOW ACCENT DASHES */}
-        <div className="flex items-center justify-center gap-3 px-4 shrink-0">
-          <svg viewBox="0 0 24 28" className="w-5 h-6 shrink-0" fill="none" aria-hidden="true">
-            <path d="M5 7L18 11" stroke="#FFD63A" strokeWidth="4.5" strokeLinecap="round" />
-            <path d="M5 21L18 17" stroke="#FFD63A" strokeWidth="4.5" strokeLinecap="round" />
-          </svg>
-
+        {/* 4. PRIMARY GLOSSY EMERALD "Play" + SUNSET "60s Rush" ACTION ROW */}
+        <div className="flex items-center justify-center gap-2.5 px-2 shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -224,19 +226,34 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
                 onPlay();
               }
             }}
-            className="relative flex-1 max-w-[238px] h-[54px] sm:h-[58px] rounded-full pastel-play-btn flex items-center justify-center gap-3 cursor-pointer overflow-hidden"
+            className="relative flex-[1.35] h-[54px] sm:h-[58px] rounded-full pastel-play-btn flex items-center justify-center gap-2.5 cursor-pointer overflow-hidden px-4"
           >
-            <span className="pointer-events-none absolute top-1.5 left-6 w-12 h-2 rounded-full bg-white/50" />
-            <Play className="w-7 h-7 text-white fill-white drop-shadow-[0_2px_0_rgba(12,84,54,0.5)]" />
-            <span className="font-display font-bold text-[27px] sm:text-[29px] text-white tracking-wide cartoon-text-shadow leading-none">
+            <span className="pointer-events-none absolute top-1.5 left-5 w-11 h-2 rounded-full bg-white/50" />
+            <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-white drop-shadow-[0_2px_0_rgba(12,84,54,0.5)] shrink-0" />
+            <span className="font-display font-bold text-[25px] sm:text-[27px] text-white tracking-wide cartoon-text-shadow leading-none whitespace-nowrap">
               Play
             </span>
           </button>
 
-          <svg viewBox="0 0 24 28" className="w-5 h-6 shrink-0" fill="none" aria-hidden="true">
-            <path d="M19 7L6 11" stroke="#FFD63A" strokeWidth="4.5" strokeLinecap="round" />
-            <path d="M19 21L6 17" stroke="#FFD63A" strokeWidth="4.5" strokeLinecap="round" />
-          </svg>
+          <button
+            type="button"
+            onClick={onPlayRush}
+            aria-label="Play 60-Second Timed Rush"
+            className="relative flex-1 max-w-[144px] h-[54px] sm:h-[58px] rounded-full pastel-rush-btn flex flex-col items-center justify-center cursor-pointer overflow-hidden px-3"
+          >
+            <span className="pointer-events-none absolute top-1.5 left-4 w-8 h-1.5 rounded-full bg-white/45" />
+            <div className="flex items-center justify-center gap-1.5">
+              <Timer className="w-4.5 h-4.5 text-white stroke-[2.8] shrink-0 drop-shadow-[0_2px_0_rgba(104,34,10,0.45)]" />
+              <span className="font-display font-bold text-[17px] sm:text-[18px] text-white cartoon-text-shadow leading-none whitespace-nowrap">
+                60s Rush
+              </span>
+            </div>
+            <span className="text-[9.5px] font-extrabold text-[#FFF3D6] leading-tight mt-0.5 whitespace-nowrap">
+              {gameState.rushBestScore > 0
+                ? `Best ${gameState.rushBestScore.toLocaleString()}`
+                : 'Endless Streak'}
+            </span>
+          </button>
         </div>
 
         {/* 5. SELECT LEVEL TYPE SECTION — Title (Non-Clickable) + All 6 Types in Left/Right Swipe Strip */}

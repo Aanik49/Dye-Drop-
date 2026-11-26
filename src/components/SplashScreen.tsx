@@ -1,16 +1,22 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {audio} from '../game/audio';
+import type {BackgroundThemeId} from '../game/types';
 import {DyeDropHeroLogo, LobbyHeroFlask} from './ComicIcons';
 import {PastelNatureBackdrop} from './PastelNatureBackdrop';
 
 interface SplashScreenProps {
+  themeId?: BackgroundThemeId;
   onComplete: () => void;
 }
 
-export const SplashScreen: React.FC<SplashScreenProps> = ({onComplete}) => {
+export const SplashScreen: React.FC<SplashScreenProps> = ({
+  themeId = 'mint_meadow',
+  onComplete,
+}) => {
   const [stage, setStage] = useState<'enter' | 'ready' | 'exit'>('enter');
   const [progress, setProgress] = useState<number>(8);
   const completedRef = useRef(false);
+  const isNight = themeId === 'starry_forest';
 
   const finishSplash = () => {
     if (completedRef.current) return;
@@ -50,7 +56,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({onComplete}) => {
         stage === 'exit' ? 'opacity-0' : 'opacity-100'
       }`}
     >
-      <PastelNatureBackdrop variant="lobby" />
+      <PastelNatureBackdrop variant="lobby" themeId={themeId} />
 
       {/* Hero Stacked Cartoon Logo */}
       <div
@@ -61,7 +67,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({onComplete}) => {
         }`}
       >
         <DyeDropHeroLogo className="w-[266px] h-[134px] drop-shadow-[0_8px_14px_rgba(12,68,78,0.22)]" />
-        <p className="font-display font-bold text-sm tracking-wide text-[#134D59] mt-1">
+        <p
+          className={`font-display font-bold text-sm tracking-wide mt-1 ${
+            isNight ? 'text-[#D8F6FF]' : 'text-[#134D59]'
+          }`}
+        >
           Mix · Match · Complete
         </p>
       </div>

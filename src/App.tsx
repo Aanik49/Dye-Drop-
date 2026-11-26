@@ -8,14 +8,18 @@ import {LevelListDrawer} from './components/LevelListDrawer';
 import {LevelSuccessModal} from './components/LevelSuccessModal';
 import {LobbyScreen} from './components/LobbyScreen';
 import {RecipeBookModal} from './components/RecipeBookModal';
+import {RushSummaryModal} from './components/RushSummaryModal';
 import {SplashScreen} from './components/SplashScreen';
 import {StudioModal} from './components/StudioModal';
+import {TimedRushScreen} from './components/TimedRushScreen';
 import {audio} from './game/audio';
 import {
   LEVELS_BY_TYPE,
   LEVEL_TYPES,
   LEVEL_TYPE_ORDER,
+  getBackgroundThemeById,
   getLevelDef,
+  getLiquidFinishById,
   getPaletteById,
   getVesselById,
 } from './game/data';
@@ -27,13 +31,18 @@ import {
   loadSavedState,
   persistState,
   recordLevelCompletion,
+  recordRushResult,
 } from './game/storage';
 import type {
+  BackgroundThemeId,
   LevelTypeId,
+  LiquidFinishId,
   PaletteId,
   RecipeBookEntry,
+  RushRunSummary,
   SavedGameState,
   ScreenMode,
+  StudioTabId,
   VesselId,
 } from './game/types';
 import {usePWAInstall} from './hooks/usePWAInstall';
@@ -46,6 +55,12 @@ interface ActiveSuccessState {
   completedAllOfCurrentType: boolean;
 }
 
+interface ActiveRushSummaryState {
+  summary: RushRunSummary;
+  diamondsEarned: number;
+  isNewBestScore: boolean;
+}
+
 export default function App() {
   const [screen, setScreen] = useState<ScreenMode>('splash');
   const [gameState, setGameState] = useState<SavedGameState>(() => loadSavedState());
@@ -53,7 +68,7 @@ export default function App() {
   // Modals & overlays
   const [showStreakModal, setShowStreakModal] = useState(false);
   const [showDailyTasksModal, setShowDailyTasksModal] = useState(false);
-  const [studioModalTab, setStudioModalTab] = useState<'vessels' | 'palettes' | null>(null);
+  const [studioModalTab, setStudioModalTab] = useState<StudioTabId | null>(null);
   const [showRecipeBook, setShowRecipeBook] = useState(false);
   const [successState, setSuccessState] = useState<ActiveSuccessState | null>(null);
   const [failedState, setFailedState] = useState<GameplayResultPayload | null>(null);
@@ -63,6 +78,8 @@ export default function App() {
     unlockedType: LevelTypeId | null;
   } | null>(null);
   const [gameplayResetCounter, setGameplayResetCounter] = useState(0);
+  const [rushRunCounter, setRushRunCounter] = useState(0);
+  const [rushSummaryState, setRushSummaryState] = useState<ActiveRushSummaryState | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const {isInstallable, install} = usePWAInstall();
@@ -133,6 +150,14 @@ export default function App() {
     setFailedState(null);
     setShowLevelListDrawer(false);
     setScreen('gameplay');
+  };
+
+  const handlePlayRushFromLobby = () => {
+    audio.unlock();
+    audio.playClick();
+    setRushSummaryState(null);
+    setRushRunCounter((c) => c + 1);
+    setScreen('rush');
   };
 
   const handleClaimDailyLogin = () => {
@@ -208,6 +233,52 @@ export default function App() {
     showToast(`Purchased & activated ${pal.name}!`);
   };
 
+  const handleBuyOrEquipFinish = (finishId: LiquidFinishId) => {
+    const finish = getLiquidFinishById(finishId);
+    if (gameState.ownedFinishes.includes(finishId)) {
+      audio.playClick();
+      setGameState((prev) => ({...prev, equippedFinish: finishId}));
+      showToast(`Equipped ${finish.name}!`);
+      return;
+    }
+    if (gameState.diamonds < finish.price) {
+      audio.playLocked();
+      showToast(`Need ${finish.price - gameState.diamonds} more Diamonds!`);
+      return;
+    }
+    audio.playBuy();
+    setGameState((prev) => ({
+      ...prev,
+      diamonds: prev.diamonds - finish.price,
+      ownedFinishes: [...prev.ownedFinishes, finishId],
+      equippedFinish: finishId,
+    }));
+    showToast(`Purchased & equipped ${finish.name}!`);
+  };
+
+  const handleBuyOrEquipTheme = (themeId: BackgroundThemeId) => {
+    const bgTheme = getBackgroundThemeById(themeId);
+    if (gameState.ownedThemes.includes(themeId)) {
+      audio.playClick();
+      setGameState((prev) => ({...prev, equippedTheme: themeId}));
+      showToast(`Switched scene to ${bgTheme.name}!`);
+      return;
+    }
+    if (gameState.diamonds < bgTheme.price) {
+      audio.playLocked();
+      showToast(`Need ${bgTheme.price - gameState.diamonds} more Diamonds!`);
+      return;
+    }
+    audio.playBuy();
+    setGameState((prev) => ({
+      ...prev,
+      diamonds: prev.diamonds - bgTheme.price,
+      ownedThemes: [...prev.ownedThemes, themeId],
+      equippedTheme: themeId,
+    }));
+    showToast(`Unlocked & activated ${bgTheme.name}!`);
+  };
+
   const handleDropAdded = useCallback(() => {
     setGameState((prev) => incrementDailyTaskProgress(prev, 'use_drops', 1));
   }, []);
@@ -215,6 +286,23 @@ export default function App() {
   const handleSwirlAction = useCallback(() => {
     setGameState((prev) => incrementDailyTaskProgress(prev, 'swirl_glasses', 1));
   }, []);
+
+  const handleRushPerfectBlend = useCallback(() => {
+    setGameState((prev) => incrementDailyTaskProgress(prev, 'perfect_blends', 1));
+  }, []);
+
+  const handleRushComplete = useCallback(
+    (summary: RushRunSummary) => {
+      const outcome = recordRushResult(gameState, summary);
+      setGameState(outcome.nextState);
+      setRushSummaryState({
+        summary,
+        diamondsEarned: outcome.diamondsEarned,
+        isNewBestScore: outcome.isNewBestScore,
+      });
+    },
+    [gameState]
+  );
 
   const handleGameplayResult = useCallback(
     (result: GameplayResultPayload) => {
@@ -241,6 +329,7 @@ export default function App() {
         matchPercent: result.matchPercent,
         vesselId: gameState.equippedVessel,
         paletteId: gameState.equippedPalette,
+        finishId: gameState.equippedFinish,
         solvedAt: new Date().toISOString(),
       };
 
@@ -377,7 +466,9 @@ export default function App() {
     <div className="w-full h-full flex items-center justify-center bg-[#0E3B3A] sm:p-3 overflow-hidden">
       {/* Responsive Mobile Game Shell (Full-bleed on phones, sleek portrait frame on desktop) */}
       <main className="relative w-full h-full sm:max-w-[436px] sm:max-h-[900px] sm:rounded-[38px] sm:border-[5px] sm:border-[#78E6D6]/35 sm:shadow-[0_28px_72px_rgba(4,28,30,0.68)] overflow-hidden flex flex-col">
-        {screen === 'splash' && <SplashScreen onComplete={handleEnterFromSplash} />}
+        {screen === 'splash' && (
+          <SplashScreen themeId={gameState.equippedTheme} onComplete={handleEnterFromSplash} />
+        )}
 
         {screen === 'lobby' && (
           <LobbyScreen
@@ -396,6 +487,7 @@ export default function App() {
               setShowLevelListDrawer(true);
             }}
             onPlay={handlePlayFromLobby}
+            onPlayRush={handlePlayRushFromLobby}
             onToggleSound={handleToggleSound}
             onToggleMusic={handleToggleMusic}
             onOpenStreak={() => {
@@ -454,6 +546,25 @@ export default function App() {
           />
         )}
 
+        {screen === 'rush' && (
+          <TimedRushScreen
+            gameState={gameState}
+            runCounter={rushRunCounter}
+            onBackToLobby={() => {
+              audio.playClick();
+              setRushSummaryState(null);
+              setScreen('lobby');
+            }}
+            onToggleSound={handleToggleSound}
+            onToggleMusic={handleToggleMusic}
+            onDropAdded={handleDropAdded}
+            onSwirlAction={handleSwirlAction}
+            onPerfectBlend={handleRushPerfectBlend}
+            onComplete={handleRushComplete}
+            onToast={showToast}
+          />
+        )}
+
         {/* Daily Login Streak Panel (opened via "Day X" icon in Lobby) */}
         {showStreakModal && (
           <DailyStreakModal
@@ -479,7 +590,7 @@ export default function App() {
           />
         )}
 
-        {/* Studio Collection Modal (Vessels & Pigment Palettes shop in Lobby) */}
+        {/* Studio Collection Modal (Vessels, Pigment Palettes, Liquid Finishes & Themes) */}
         {studioModalTab && (
           <StudioModal
             gameState={gameState}
@@ -487,9 +598,32 @@ export default function App() {
             accentColor={activeTheme.panelCoral}
             onBuyOrEquipVessel={handleBuyOrEquipVessel}
             onBuyOrEquipPalette={handleBuyOrEquipPalette}
+            onBuyOrEquipFinish={handleBuyOrEquipFinish}
+            onBuyOrEquipTheme={handleBuyOrEquipTheme}
             onClose={() => {
               audio.playClick();
               setStudioModalTab(null);
+            }}
+          />
+        )}
+
+        {/* 60-Second Timed Rush Summary Modal */}
+        {rushSummaryState && (
+          <RushSummaryModal
+            summary={rushSummaryState.summary}
+            diamondsEarned={rushSummaryState.diamondsEarned}
+            isNewBestScore={rushSummaryState.isNewBestScore}
+            bestScore={gameState.rushBestScore}
+            bestStreak={gameState.rushBestStreak}
+            onPlayAgain={() => {
+              audio.playClick();
+              setRushSummaryState(null);
+              setRushRunCounter((c) => c + 1);
+            }}
+            onLobby={() => {
+              audio.playClick();
+              setRushSummaryState(null);
+              setScreen('lobby');
             }}
           />
         )}

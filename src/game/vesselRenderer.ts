@@ -1,5 +1,12 @@
 import {getRecipeRgb} from './colorEngine';
-import type {DyeCode, LayerSlot, PaletteDef, PrimaryDyeCode, VesselId} from './types';
+import type {
+  DyeCode,
+  LayerSlot,
+  LiquidFinishId,
+  PaletteDef,
+  PrimaryDyeCode,
+  VesselId,
+} from './types';
 
 export interface FallingDrop {
   x: number;
@@ -216,6 +223,7 @@ export function traceVesselInterior(
 export interface LiquidSceneState {
   vesselId: VesselId;
   palette: PaletteDef;
+  liquidFinish?: LiquidFinishId;
   drops: DyeCode[];
   isLayered?: boolean;
   bottomDrops?: DyeCode[];
@@ -701,26 +709,258 @@ export function renderLiquidGlassScene(
     ctx.fill();
   }
 
-  // Sparkling Cartoon Air Bubbles inside Liquid (Matches Gameplay Mockup Bowl!)
-  const bubbleSeeds = [
-    {ox: -36, spd: 11, r: 4.2, ph: 0.4},
-    {ox: 28, spd: 14, r: 5.0, ph: 1.9},
-    {ox: -8, spd: 9, r: 3.6, ph: 3.1},
-    {ox: 46, spd: 12, r: 3.8, ph: 4.5},
-    {ox: -22, spd: 15, r: 4.6, ph: 5.4},
-  ];
+  // Sparkling Cartoon Air Bubbles & Equipped Liquid Finish Toppings inside Liquid
   const liqH = Math.max(30, botY - waterTopY);
-  for (const b of bubbleSeeds) {
-    const progress = ((scene.wavePhase * b.spd + b.ph * 25) % liqH) / liqH;
-    const bx = b.ox * m.scale + Math.sin(scene.wavePhase * 0.9 + b.ph) * 4;
-    const by = botY - 12 - progress * (liqH - 14);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.36)';
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.arc(bx, by, b.r * m.scale, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+  const finish = scene.liquidFinish || 'classic';
+
+  if (finish === 'pearlescent') {
+    // Silky sweeping iridescent pearl sheen ribbons + pearl shimmer flecks
+    ctx.save();
+    const sweep = Math.sin(scene.wavePhase * 0.55) * m.topW * 0.45 + scene.tiltAngle * 1.4;
+    const pearlGrad = ctx.createLinearGradient(
+      -m.topW * 0.65 + sweep,
+      waterTopY,
+      m.topW * 0.65 + sweep,
+      botY
+    );
+    pearlGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    pearlGrad.addColorStop(0.24, 'rgba(255, 224, 248, 0.34)');
+    pearlGrad.addColorStop(0.42, 'rgba(255, 255, 255, 0.52)');
+    pearlGrad.addColorStop(0.6, 'rgba(186, 245, 255, 0.34)');
+    pearlGrad.addColorStop(0.78, 'rgba(255, 246, 198, 0.24)');
+    pearlGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = pearlGrad;
+    ctx.fillRect(-m.topW, waterTopY - 6, m.topW * 2, liqH + 22);
+
+    // Subtle secondary diagonal satin ribbon
+    const sweep2 = Math.cos(scene.wavePhase * 0.38 + 1.2) * m.topW * 0.35;
+    const satinGrad = ctx.createLinearGradient(
+      -m.topW * 0.5 - sweep2,
+      waterTopY + liqH * 0.2,
+      m.topW * 0.5 - sweep2,
+      botY
+    );
+    satinGrad.addColorStop(0, 'rgba(255,255,255,0)');
+    satinGrad.addColorStop(0.5, 'rgba(255,255,255,0.28)');
+    satinGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = satinGrad;
+    ctx.fillRect(-m.topW, waterTopY, m.topW * 2, liqH + 14);
+
+    // Tiny pearlescent micro-sparkles
+    for (let i = 0; i < 14; i++) {
+      const fx =
+        Math.sin(i * 2.1 + scene.wavePhase * 0.4) * m.botW * 0.42 +
+        Math.cos(i * 1.3) * 10 * m.scale;
+      const fy =
+        waterTopY +
+        14 +
+        (((i * 29 + scene.wavePhase * 5.5) % Math.max(20, liqH - 22)));
+      const shimmerAlpha = 0.35 + 0.55 * (0.5 + 0.5 * Math.sin(scene.wavePhase * 2.2 + i * 1.7));
+      ctx.fillStyle =
+        i % 3 === 0
+          ? `rgba(255, 255, 255, ${shimmerAlpha})`
+          : i % 3 === 1
+          ? `rgba(255, 218, 246, ${shimmerAlpha})`
+          : `rgba(205, 252, 255, ${shimmerAlpha})`;
+      ctx.beginPath();
+      ctx.arc(fx, fy, (1.8 + (i % 3) * 0.85) * m.scale, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  if (finish === 'aurora_bubbles') {
+    // Glowing holographic aurora light curtains inside liquid
+    ctx.save();
+    for (let band = 0; band < 2; band++) {
+      const bandY = waterTopY + liqH * (0.34 + band * 0.28);
+      const aurGrad = ctx.createLinearGradient(-m.topW * 0.55, bandY, m.topW * 0.55, bandY);
+      aurGrad.addColorStop(0, 'rgba(92, 255, 214, 0)');
+      aurGrad.addColorStop(0.28, band === 0 ? 'rgba(92, 255, 214, 0.32)' : 'rgba(130, 188, 255, 0.28)');
+      aurGrad.addColorStop(0.55, 'rgba(196, 134, 255, 0.34)');
+      aurGrad.addColorStop(0.8, 'rgba(116, 248, 255, 0.28)');
+      aurGrad.addColorStop(1, 'rgba(92, 255, 214, 0)');
+      ctx.strokeStyle = aurGrad;
+      ctx.lineWidth = 14 * m.scale;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let wx = -m.topW * 0.55; wx <= m.topW * 0.55; wx += 14) {
+        const wy =
+          bandY +
+          Math.sin(wx * 0.045 + scene.wavePhase * (0.9 + band * 0.3) + band * 2) * 8 * m.scale;
+        if (wx === -m.topW * 0.55) ctx.moveTo(wx, wy);
+        else ctx.lineTo(wx, wy);
+      }
+      ctx.stroke();
+    }
+
+    const auroraSeeds = [
+      {ox: -44, spd: 12, r: 6.2, ph: 0.3, hue: 168},
+      {ox: 34, spd: 15, r: 7.4, ph: 1.6, hue: 282},
+      {ox: -12, spd: 10, r: 5.5, ph: 2.9, hue: 196},
+      {ox: 48, spd: 13, r: 5.8, ph: 4.1, hue: 318},
+      {ox: -26, spd: 16, r: 6.8, ph: 5.2, hue: 152},
+      {ox: 12, spd: 11, r: 4.9, ph: 3.7, hue: 242},
+      {ox: -5, spd: 14, r: 6.0, ph: 0.9, hue: 184},
+    ];
+    for (const ab of auroraSeeds) {
+      const progress = ((scene.wavePhase * ab.spd + ab.ph * 26) % liqH) / liqH;
+      const bx =
+        ab.ox * m.scale +
+        Math.sin(scene.wavePhase * 1.1 + ab.ph) * 6 +
+        scene.tiltAngle * 0.45;
+      const by = botY - 10 - progress * (liqH - 12);
+      const radius = ab.r * m.scale;
+      const hue = (ab.hue + scene.wavePhase * 18) % 360;
+
+      // Soft outer aurora glow
+      const halo = ctx.createRadialGradient(bx, by, radius * 0.2, bx, by, radius * 1.9);
+      halo.addColorStop(0, `hsla(${hue}, 96%, 78%, 0.52)`);
+      halo.addColorStop(0.6, `hsla(${(hue + 50) % 360}, 92%, 70%, 0.22)`);
+      halo.addColorStop(1, `hsla(${hue}, 96%, 72%, 0)`);
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(bx, by, radius * 1.9, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Bubble rim & crescent highlight
+      ctx.fillStyle = `hsla(${hue}, 95%, 86%, 0.32)`;
+      ctx.strokeStyle = `hsla(${(hue + 35) % 360}, 100%, 84%, 0.92)`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(bx, by, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+      ctx.beginPath();
+      ctx.arc(bx - radius * 0.32, by - radius * 0.32, radius * 0.26, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  } else {
+    // Classic sunlit cartoon air bubbles
+    const bubbleSeeds = [
+      {ox: -36, spd: 11, r: 4.2, ph: 0.4},
+      {ox: 28, spd: 14, r: 5.0, ph: 1.9},
+      {ox: -8, spd: 9, r: 3.6, ph: 3.1},
+      {ox: 46, spd: 12, r: 3.8, ph: 4.5},
+      {ox: -22, spd: 15, r: 4.6, ph: 5.4},
+    ];
+    for (const b of bubbleSeeds) {
+      const progress = ((scene.wavePhase * b.spd + b.ph * 25) % liqH) / liqH;
+      const bx = b.ox * m.scale + Math.sin(scene.wavePhase * 0.9 + b.ph) * 4;
+      const by = botY - 12 - progress * (liqH - 14);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.36)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(bx, by, b.r * m.scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  if (finish === 'star_confetti') {
+    // Floating rotating pastel 4-point & 5-point star confetti drifting inside the dye
+    const stars = [
+      {ox: -46, oy: 0.22, r: 7.2, spd: 0.7, ph: 0.2, col: '#FFF27A', pts: 5},
+      {ox: 38, oy: 0.3, r: 6.4, spd: -0.9, ph: 1.1, col: '#FFFFFF', pts: 4},
+      {ox: -14, oy: 0.45, r: 8.0, spd: 0.65, ph: 2.3, col: '#FFB3DC', pts: 5},
+      {ox: 18, oy: 0.66, r: 6.8, spd: -0.8, ph: 3.0, col: '#A8FFEA', pts: 4},
+      {ox: -36, oy: 0.74, r: 7.4, spd: 0.85, ph: 4.2, col: '#FFE066', pts: 5},
+      {ox: 44, oy: 0.78, r: 6.0, spd: -0.75, ph: 5.1, col: '#FFFFFF', pts: 5},
+      {ox: 2, oy: 0.24, r: 5.8, spd: 1.0, ph: 1.7, col: '#FFD4F4', pts: 4},
+      {ox: -24, oy: 0.56, r: 5.5, spd: -0.95, ph: 3.9, col: '#FFF6B0', pts: 4},
+      {ox: 28, oy: 0.48, r: 7.0, spd: 0.72, ph: 2.8, col: '#FFF27A', pts: 5},
+      {ox: -4, oy: 0.84, r: 6.6, spd: -0.6, ph: 0.8, col: '#FFFFFF', pts: 4},
+    ];
+    ctx.save();
+    for (const st of stars) {
+      const sx =
+        st.ox * m.scale +
+        Math.sin(scene.wavePhase * 0.7 + st.ph) * 7 * m.scale +
+        scene.tiltAngle * 0.65;
+      const sy =
+        waterTopY +
+        12 +
+        st.oy * Math.max(24, liqH - 22) +
+        Math.cos(scene.wavePhase * 0.85 + st.ph) * 5 * m.scale;
+      const rot = scene.wavePhase * st.spd * 0.45 + st.ph + scene.tiltAngle * 0.03;
+      const outerR = st.r * m.scale;
+      const innerR = outerR * (st.pts === 4 ? 0.36 : 0.46);
+
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(rot);
+      ctx.fillStyle = st.col;
+      ctx.strokeStyle = 'rgba(23, 72, 89, 0.55)';
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      for (let p = 0; p < st.pts * 2; p++) {
+        const ang = (p * Math.PI) / st.pts - Math.PI / 2;
+        const rad = p % 2 === 0 ? outerR : innerR;
+        const px = Math.cos(ang) * rad;
+        const py = Math.sin(ang) * rad;
+        if (p === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  if (finish === 'boba_pearls') {
+    // Glossy chewy brown-sugar boba pearls settled at the base, rolling smoothly with tilt
+    const bobaSeeds = [
+      {ox: -36, row: 0, r: 8.6, ph: 0.2},
+      {ox: -20, row: 0, r: 9.2, ph: 1.4},
+      {ox: -3, row: 0, r: 8.8, ph: 2.1},
+      {ox: 14, row: 0, r: 9.4, ph: 3.3},
+      {ox: 31, row: 0, r: 8.6, ph: 4.0},
+      {ox: -28, row: 1, r: 8.4, ph: 0.9},
+      {ox: -10, row: 1, r: 8.9, ph: 2.7},
+      {ox: 8, row: 1, r: 8.5, ph: 3.8},
+      {ox: 24, row: 1, r: 8.2, ph: 5.0},
+      {ox: -1, row: 2, r: 8.0, ph: 1.8},
+    ];
+    ctx.save();
+    const tiltShift = Math.max(-22, Math.min(22, scene.tiltAngle * 0.9)) * m.scale;
+    const bounceBoost = Math.abs(scene.tiltAngle) * 0.28 + (1 - scene.swirlEnergy) * 2.5;
+    for (const bp of bobaSeeds) {
+      const r = bp.r * m.scale;
+      const bx =
+        bp.ox * m.scale +
+        tiltShift +
+        Math.sin(scene.wavePhase * 0.75 + bp.ph) * (1.8 + bounceBoost * 0.35);
+      const baseRowY = botY - 11 * m.scale - bp.row * 13.5 * m.scale;
+      const by =
+        baseRowY -
+        Math.abs(Math.sin(scene.wavePhase * 0.9 + bp.ph)) * (1.6 + bounceBoost * 0.45);
+
+      const bobaGrad = ctx.createRadialGradient(bx - r * 0.28, by - r * 0.28, r * 0.1, bx, by, r);
+      bobaGrad.addColorStop(0, '#6B4230');
+      bobaGrad.addColorStop(0.45, '#3E2218');
+      bobaGrad.addColorStop(1, '#1F0E0A');
+
+      ctx.fillStyle = bobaGrad;
+      ctx.strokeStyle = '#174859';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(bx, by, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Glossy specular shine dot on each boba pearl
+      ctx.fillStyle = 'rgba(255, 240, 224, 0.82)';
+      ctx.beginPath();
+      ctx.ellipse(bx - r * 0.3, by - r * 0.3, r * 0.28, r * 0.17, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   // Impact Ripples
@@ -809,6 +1049,7 @@ export function renderLiquidGlassScene(
 export function generateSnapshotCardDataUrl(params: {
   vesselId: VesselId;
   palette: PaletteDef;
+  liquidFinish?: LiquidFinishId;
   drops: DyeCode[];
   isLayered?: boolean;
   bottomDrops?: DyeCode[];
@@ -888,6 +1129,7 @@ export function generateSnapshotCardDataUrl(params: {
   renderLiquidGlassScene(ctx, w - 104, 412, {
     vesselId: params.vesselId,
     palette: params.palette,
+    liquidFinish: params.liquidFinish,
     drops: params.drops,
     isLayered: params.isLayered,
     bottomDrops: params.bottomDrops,
